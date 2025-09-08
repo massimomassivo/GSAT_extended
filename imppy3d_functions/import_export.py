@@ -4,6 +4,8 @@ from skimage.util import img_as_ubyte, img_as_uint
 from skimage import io
 import glob
 import os.path
+from pathlib import Path
+import pandas as pd
 
 
 def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
@@ -1205,3 +1207,39 @@ def save_multipage_image(imgs_in, path_in, bigtiff=0,\
 
     if not quiet:
         print(f"\nSuccessfully saved {num_imgs} images!")
+
+
+def save_area_fraction_excel(img_path_in, area_fraction_in, excel_path_in,
+    quiet_in=False):
+    """Append area fraction results to an Excel file.
+
+    The Excel workbook will contain two columns: 'image' and
+    'area_fraction'. If the file already exists, new data will be
+    appended; otherwise, a new workbook will be created.
+
+    Parameters
+    ----------
+    img_path_in : str
+        File path or name of the analyzed image.
+    area_fraction_in : float
+        Area fraction of the image (between 0.0 and 1.0).
+    excel_path_in : str or Path
+        Destination path of the Excel workbook.
+    quiet_in : bool, optional
+        Set to True to suppress status messages, by default False.
+    """
+
+    excel_path = Path(excel_path_in)
+    df_new = pd.DataFrame({'image': [str(img_path_in)],
+                           'area_fraction': [area_fraction_in]})
+
+    if excel_path.exists():
+        df_out = pd.concat([pd.read_excel(excel_path), df_new],
+                           ignore_index=True)
+    else:
+        df_out = df_new
+
+    df_out.to_excel(excel_path, index=False)
+
+    if not quiet_in:
+        print(f"\nSaved area fraction results to: {excel_path}")

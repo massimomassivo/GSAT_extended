@@ -1,5 +1,6 @@
 # Import external dependencies
 import sys, os
+from pathlib import Path
 import numpy as np
 import cv2 as cv
 import skimage.feature as feature
@@ -208,6 +209,12 @@ print(f"    Minimum feature (area) size: {min_feat_sz} pixels")
 # -------- CALCULATE RELATIVE DENSITY --------
 
 rel_density = cwrap.calc_rel_density(img2)
+
+# Save area fraction results to summary Excel file
+results_dir = Path(__file__).resolve().parents[2] / "results"
+results_dir.mkdir(exist_ok=True)
+excel_path = results_dir / "area_fraction_summary.xlsx"
+imex.save_area_fraction_excel(file_in_path, rel_density, excel_path)
 
 
 # -------- BEFORE AND AFTER PICTURE --------
