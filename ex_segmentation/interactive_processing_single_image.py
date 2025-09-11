@@ -8,7 +8,7 @@ from skimage import filters as sfilt
 from skimage.util import img_as_ubyte, img_as_float, img_as_bool
 from skimage.util import invert as ski_invert
 from matplotlib import pyplot as plt
-from matplotlib.widgets import TextBox, Slider, Button, CheckButtons
+from matplotlib.widgets import TextBox, Slider, Button, CheckButtons, RadioButtons
 
 # Import local modules
 # Ensure this is the correct path to the functions folder
