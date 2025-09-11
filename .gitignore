@@ -16,3 +16,6 @@ venv/
 
 # Local dependencies directory
 dependencies/
+
+#data
+images/
