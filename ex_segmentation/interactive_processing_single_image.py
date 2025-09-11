@@ -37,10 +37,10 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # Fontsize of the figure title
 # Provide the filepath to the image that should be imported and segmented.
 # Imported images will be converted to grayscale as UINT8 (i.e., max
 # grayscale intensities of 255).
-file_in_path = "path/to/image.tif"
+file_in_path = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images\M-34524 - 2503i12549.jpg"
 
 # The resultant segmentation will be saved in the following filepath.
-file_out_path = "path/to/segmented_output.tif"
+file_out_path = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images\M-34524 - 2503i12549_segmented.jpg"
 
 # Segmentation should result in the grain boundaries being WHITE. If the
 # resultant segmentation illustrates black grain boundaries, then the image
@@ -171,12 +171,12 @@ def interact_canny_edge(img_in):
     return [img_out, mask_out, fltr_params]
 
 # Uncomment below to use Canny edge detection. 
-#print(f"\nInitiating interactive canny edge detection...")
-#[img2, canny_mask, canny_params] = interact_canny_edge(img2)
-#print(f"\nSuccessfully applied the 'canny' edge detection filter:\n"\
-#    f"    Pre-filter Gaussian blur sigma: {canny_params[1]}\n"\
-#    f"    Hysteresis lower threshold: {canny_params[2]}\n"\
-#    f"    Hysteresis upper threshold: {canny_params[3]}" )
+print(f"\nInitiating interactive canny edge detection...")
+[img2, canny_mask, canny_params] = interact_canny_edge(img2)
+print(f"\nSuccessfully applied the 'canny' edge detection filter:\n"\
+   f"    Pre-filter Gaussian blur sigma: {canny_params[1]}\n"\
+   f"    Hysteresis lower threshold: {canny_params[2]}\n"\
+   f"    Hysteresis upper threshold: {canny_params[3]}" )
 
 
 # -------- SHARPEN FILTER --------
@@ -252,17 +252,17 @@ def interact_adaptive_thresholding(img_in):
     return [img_out, fltr_params]
 
 # Uncomment below to use adaptive thresholding
-#print(f"\nInitiating interactive adaptive thresholding...")
-#img2, thresh_params = interact_adaptive_thresholding(img2)
+print(f"\nInitiating interactive adaptive thresholding...")
+img2, thresh_params = interact_adaptive_thresholding(img2)
 
-#print(f"\nSuccessfully applied adaptive thresholding:")
-#print(f"    Block size: {thresh_params[0]}")
-#print(f"    Intensity offset: {thresh_params[1]}")
+print(f"\nSuccessfully applied adaptive thresholding:")
+print(f"    Block size: {thresh_params[0]}")
+print(f"    Intensity offset: {thresh_params[1]}")
 
 
 # -------- HYSTERESIS THRESHOLDING --------
-print(f"\nInitiating interactive hysteresis thresholding...")
-img2 = sdrv.interact_driver_thresholding(img2, "hysteresis_threshold_text")
+# print(f"\nInitiating interactive hysteresis thresholding...")
+# img2 = sdrv.interact_driver_thresholding(img2, "hysteresis_threshold_text")
 
 
 # -------- MORPHOLOGICAL OPERATIONS --------
