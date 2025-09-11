@@ -41,27 +41,23 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # Fontsize of the figure title
 # boundaries are assumed to be denoted by white pixels.
 file_in_path = "path/to/segmented_image.jpg"
 
-# Define the path for the second Excel file to compare results between images
-second_excel_path = "path/to/summary.xlsx"
+# Define the base directory where results will be stored. A subdirectory with
+# the name of the input image appended by "_results" will automatically be
+# created inside this directory.
+results_base_dir = "path/to/results_directory"
 
-# Lines of pixels will be drawn onto rotated versions of the images. The 
+# Define the path for the summary Excel file to compare results between images.
+# This file will be stored in the base results directory and appended to with
+# data from each processed image.
+summary_excel_path = os.path.join(results_base_dir, "summary.xlsx")
+
+# Lines of pixels will be drawn onto rotated versions of the images. The
 # distances between intersections, in pixels, correspond to grain lengths.
 # The distances of these individual segments as a function of rotation angle
-# will be saved in an automatically named .csv file. It will be saved in the
-# same directory as the imported image, and it will be appended with 
-# "_distances". For example, if the imported image was, "./img_segmented.tif",
-# then the output file would be saved as, "./img_segmented_distances.csv".
-
-# Provide a path to a directory (not a file) where images can be saved. These
-# images will be rotated copies of the provided input image, but with
-# superimposed lines on them that illustrate the intersect-segments. There
-# will be one image for every rotation, and the images will be saved as unsigned
-# integer (8-bit) images. Like the input image, grain boundaries are denoted by
-# white pixels. The intersect segments are superimposed as gray pixels with
-# intensity 150 (out of 255). The names of these saved images are automatically
-# generated based on the name of the input image and the corresponding rotation
-# angles.
-directory_images_out = "path/to/output_images"
+# will be saved in an automatically named .csv file within the results
+# directory. The file name will be appended with "_distances". For example,
+# if the imported image was "./img_segmented.tif", then the output file would
+# be saved as "<results_base_dir>/img_segmented_results/img_segmented_distances.csv".
 
 # Set "borders_white" to True if the provided input image contains white pixels
 # that correspond to the grain boundaries. If True, then nothing is done. If
@@ -121,6 +117,20 @@ img1 = img_as_ubyte(img1)
 img1_size = img1_prop[0]  # Total number of pixels
 img1_shape = img1_prop[1] # Tuple containing the number of rows and columns
 img1_dtype = img1_prop[2] # Returns the image data type (i.e., uint8)
+
+# Create an output directory for this image inside the user-defined
+# results directory. All images and spreadsheets generated from this
+# script will be stored here.
+filename_no_ext = os.path.splitext(os.path.basename(file_in_path))[0]
+results_out_dir = os.path.join(results_base_dir, filename_no_ext + "_results")
+os.makedirs(results_out_dir, exist_ok=True)
+
+# Directory for rotated images
+directory_images_out = os.path.join(results_out_dir, "rotated_images")
+os.makedirs(directory_images_out, exist_ok=True)
+
+# Prefix used when creating output files
+input_file_path_no_ext = os.path.join(results_out_dir, filename_no_ext)
 
 img2temp = img1.copy()
 img2=img2temp[start_row:end_row, start_col:end_col]
@@ -211,8 +221,7 @@ inv_dist_all_arr = np.array(inv_dist_all_arr)
 # for m, cur_theta in enumerate(theta_arr):
 #     cur_img = imgs_rot_out[m]
 #
-#     # Extract the filename without the path
-#     filename_no_ext = os.path.basename(os.path.splitext(file_in_path)[0])
+#     # Construct the output path for the current rotation angle
 #     file_out_name = filename_no_ext + "_" + f"{int(np.round(cur_theta))}" + ".tif"
 #     cur_img_path_out = os.path.join(directory_images_out, file_out_name)
 #
@@ -280,8 +289,7 @@ for m in range(num_boxes):
 ax1.set_xlabel('Rotation of Line Intercepts [degrees]')
 ax1.set_ylabel('Segment Length of Grains [µm]')  # pixels to µm
 
-# Define the input file path and create the output boxplot file path
-input_file_path_no_ext, _ = os.path.splitext(file_in_path)
+# Define the output boxplot file path inside the results directory
 output_boxplot_file = input_file_path_no_ext + "_boxplot.png"
 
 # Speichere den Boxplot
@@ -394,8 +402,7 @@ df_results = pd.DataFrame(results)
 df_distances = pd.DataFrame(dist_all_arr[:,1], columns=['Distances (µm)'])
 df_inv_distances = pd.DataFrame(inv_dist_all_arr[:,1], columns=['Inverse Distances (1/µm)'])
 
-# Define the input file path and create the output Excel file path
-input_file_path_no_ext, _ = os.path.splitext(file_in_path)
+# Define the output Excel file path inside the results directory
 output_file_path_excel = input_file_path_no_ext + ".xlsx"
 
 # # Save the DataFrame to an Excel file
@@ -443,16 +450,16 @@ summary_parameters = {
 df_summary = pd.DataFrame([summary_parameters])
 
 # Check if the second Excel file exists
-if not os.path.exists(second_excel_path):
+if not os.path.exists(summary_excel_path):
     # If the file does not exist, create it and write the DataFrame to it
-    df_summary.to_excel(second_excel_path, index=False, engine='openpyxl')
+    df_summary.to_excel(summary_excel_path, index=False, engine='openpyxl')
 else:
     # If the file exists, append the new data without overwriting the old data
-    with pd.ExcelWriter(second_excel_path, mode='a', engine='openpyxl', if_sheet_exists='overlay') as writer:
+    with pd.ExcelWriter(summary_excel_path, mode='a', engine='openpyxl', if_sheet_exists='overlay') as writer:
         df_summary.to_excel(writer, index=False, header=False, startrow=writer.sheets['Sheet1'].max_row)
 
 # Load the workbook and select the active worksheet
-wb = load_workbook(second_excel_path)
+wb = load_workbook(summary_excel_path)
 ws = wb.active
 
 # Apply number format to the relevant columns
@@ -461,9 +468,9 @@ for row in ws.iter_rows(min_row=2, min_col=2, max_col=ws.max_column):
         cell.number_format = '0.00'
 
 # Save the workbook
-wb.save(second_excel_path)
+wb.save(summary_excel_path)
 
-print(f"\nSummary data has been successfully saved to {second_excel_path}.")
+print(f"\nSummary data has been successfully saved to {summary_excel_path}.")
 
 # Funktion zum Erstellen und Speichern von Histogrammen
 def create_histogram(data, title, xlabel, output_file):
@@ -477,8 +484,7 @@ def create_histogram(data, title, xlabel, output_file):
     plt.savefig(output_file)
     plt.close()
 
-# Definiere den Eingabepfad und erstelle die Ausgabepfade für die Histogramme
-input_file_path_no_ext, _ = os.path.splitext(file_in_path)
+# Define the output paths for the histogram images inside the results directory
 output_histogram_distances = input_file_path_no_ext + "_histogram_distances.png"
 output_histogram_inv_distances = input_file_path_no_ext + "_histogram_inverse_distances.png"
 
