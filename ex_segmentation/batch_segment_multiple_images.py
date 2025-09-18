@@ -1,0 +1,290 @@
+"""Batch segmentation script for multiple 2D images.
+
+This command line utility loads each readable image from an input directory,
+applies a segmentation pipeline (denoise -> sharpen -> threshold ->
+morphology -> cleanup), and saves a binarized result to the specified output
+directory. Filenames are mirrored with a ``_segmented`` suffix.
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Sequence
+
+import numpy as np
+from skimage import morphology as morph
+from skimage.util import img_as_bool, img_as_ubyte
+from skimage.util import invert as ski_invert
+
+
+# Ensure local modules can be imported when the script is executed directly.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+IMPPY_MODULE_PATH = REPO_ROOT / "imppy3d_functions"
+if str(IMPPY_MODULE_PATH) not in sys.path:
+    sys.path.insert(0, str(IMPPY_MODULE_PATH))
+
+import import_export as imex  # noqa: E402  (local import after path setup)
+import ski_driver_functions as sdrv  # noqa: E402
+
+
+ALLOWED_EXTENSIONS = {
+    ".tif",
+    ".tiff",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".jp2",
+    ".bmp",
+    ".dib",
+    ".pbm",
+    ".ppm",
+    ".pgm",
+    ".pnm",
+}
+
+
+@dataclass(frozen=True)
+class PipelineParameters:
+    """Container for the segmentation pipeline parameters."""
+
+    denoise: Sequence[object]
+    sharpen: Sequence[object]
+    threshold: Sequence[object]
+    morphology: Sequence[object]
+    max_hole_size: int
+    min_feature_size: int
+    invert_grayscale: bool
+
+
+DEFAULT_PIPELINE = PipelineParameters(
+    denoise=("nl_means", 0.04, 5, 7),
+    sharpen=("unsharp_mask", 2, 0.3),
+    threshold=("hysteresis_threshold", 128, 200),
+    morphology=(0, 1, 1),
+    max_hole_size=4,
+    min_feature_size=64,
+    invert_grayscale=False,
+)
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Batch segment all readable images in a directory.",
+    )
+    parser.add_argument(
+        "--input-dir",
+        required=True,
+        type=Path,
+        help="Path to the directory containing images to segment.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        required=True,
+        type=Path,
+        help="Directory where segmented images will be written.",
+    )
+    parser.add_argument(
+        "--invert",
+        action="store_true",
+        help="Invert grayscale intensities before segmentation.",
+    )
+    parser.add_argument(
+        "--max-hole-size",
+        type=int,
+        default=DEFAULT_PIPELINE.max_hole_size,
+        help="Maximum hole area (pixels) to fill during cleanup.",
+    )
+    parser.add_argument(
+        "--min-feature-size",
+        type=int,
+        default=DEFAULT_PIPELINE.min_feature_size,
+        help="Minimum feature area (pixels) to retain during cleanup.",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging verbosity level.",
+    )
+    return parser.parse_args(argv)
+
+
+def configure_logging(level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+
+
+def collect_image_files(input_dir: Path) -> List[Path]:
+    return sorted(
+        path
+        for path in input_dir.iterdir()
+        if path.is_file() and path.suffix.lower() in ALLOWED_EXTENSIONS
+    )
+
+
+def build_pipeline(args: argparse.Namespace) -> PipelineParameters:
+    if args.max_hole_size < 0:
+        raise ValueError("--max-hole-size must be non-negative.")
+    if args.min_feature_size < 0:
+        raise ValueError("--min-feature-size must be non-negative.")
+
+    return PipelineParameters(
+        denoise=DEFAULT_PIPELINE.denoise,
+        sharpen=DEFAULT_PIPELINE.sharpen,
+        threshold=DEFAULT_PIPELINE.threshold,
+        morphology=DEFAULT_PIPELINE.morphology,
+        max_hole_size=args.max_hole_size,
+        min_feature_size=args.min_feature_size,
+        invert_grayscale=args.invert,
+    )
+
+
+def segment_image(image: np.ndarray, params: PipelineParameters) -> np.ndarray:
+    """Apply the segmentation pipeline to a single image array."""
+
+    working_img = img_as_ubyte(image)
+
+    if params.invert_grayscale:
+        logging.debug("Inverting grayscale intensities.")
+        working_img = img_as_ubyte(ski_invert(working_img))
+
+    logging.debug("Applying denoise filter with parameters: %s", params.denoise)
+    working_img = sdrv.apply_driver_denoise(
+        working_img, list(params.denoise), quiet_in=True
+    )
+
+    logging.debug("Applying sharpen filter with parameters: %s", params.sharpen)
+    working_img = sdrv.apply_driver_sharpen(
+        working_img, list(params.sharpen), quiet_in=True
+    )
+
+    logging.debug("Applying threshold with parameters: %s", params.threshold)
+    working_img = sdrv.apply_driver_thresholding(
+        working_img, list(params.threshold), quiet_in=True
+    )
+
+    logging.debug("Applying morphology with parameters: %s", params.morphology)
+    working_img = sdrv.apply_driver_morph(
+        working_img, list(params.morphology), quiet_in=True
+    )
+
+    logging.debug(
+        "Removing small holes (<= %s px) and features (< %s px).",
+        params.max_hole_size,
+        params.min_feature_size,
+    )
+    working_bool = img_as_bool(working_img)
+    working_bool = morph.remove_small_holes(
+        working_bool, area_threshold=int(params.max_hole_size), connectivity=1
+    )
+    working_bool = morph.remove_small_objects(
+        working_bool, min_size=int(params.min_feature_size), connectivity=1
+    )
+
+    return img_as_ubyte(working_bool)
+
+
+def validate_directory(path: Path) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"Directory does not exist: {path}")
+    if not path.is_dir():
+        raise NotADirectoryError(f"Path is not a directory: {path}")
+
+
+def process_images(
+    input_dir: Path,
+    output_dir: Path,
+    params: PipelineParameters,
+) -> int:
+    image_paths = collect_image_files(input_dir)
+    if not image_paths:
+        raise FileNotFoundError(
+            f"No supported image files were found in {input_dir}."
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    processed_count = 0
+    total = len(image_paths)
+    for index, img_path in enumerate(image_paths, start=1):
+        logging.info("Processing %s (%d/%d)", img_path.name, index, total)
+
+        img, img_props = imex.load_image(str(img_path), quiet_in=True)
+        if img is None:
+            logging.error("Skipping %s: unable to read image.", img_path.name)
+            continue
+        if img.ndim != 2:
+            logging.error(
+                "Skipping %s: expected a 2D grayscale image but received shape %s.",
+                img_path.name,
+                img_props[1] if img_props else img.shape,
+            )
+            continue
+
+        try:
+            segmented = segment_image(img, params)
+        except Exception as exc:  # pragma: no cover - defensive guard
+            logging.exception("Failed to process %s due to error: %s", img_path.name, exc)
+            continue
+
+        if segmented.shape != img.shape:
+            logging.error(
+                "Skipping %s: segmented image shape %s differs from original %s.",
+                img_path.name,
+                segmented.shape,
+                img.shape,
+            )
+            continue
+
+        output_path = output_dir / f"{img_path.stem}_segmented{img_path.suffix}"
+        if not imex.save_image(segmented, str(output_path), quiet_in=True):
+            logging.error("Failed to save segmented image for %s.", img_path.name)
+            continue
+
+        logging.info("Saved segmented image to %s", output_path)
+        processed_count += 1
+
+    return processed_count
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv)
+    configure_logging(args.log_level)
+
+    try:
+        validate_directory(args.input_dir)
+    except (FileNotFoundError, NotADirectoryError) as exc:
+        logging.error("%s", exc)
+        return 1
+
+    try:
+        params = build_pipeline(args)
+    except ValueError as exc:
+        logging.error("%s", exc)
+        return 1
+
+    try:
+        processed = process_images(args.input_dir, args.output_dir, params)
+    except FileNotFoundError as exc:
+        logging.error("%s", exc)
+        return 1
+
+    if processed == 0:
+        logging.error(
+            "No readable images were processed from %s. Please verify the input files.",
+            args.input_dir,
+        )
+        return 1
+
+    logging.info("Successfully processed %d image(s).", processed)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
