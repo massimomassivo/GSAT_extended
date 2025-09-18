@@ -5,6 +5,7 @@ import cv2 as cv
 import skimage.feature as feature
 from skimage import morphology as morph
 from skimage import filters as sfilt
+from skimage import restoration as srest
 from skimage.util import img_as_ubyte, img_as_float, img_as_bool
 from skimage.util import invert as ski_invert
 from matplotlib import pyplot as plt
@@ -77,13 +78,30 @@ img2 = img1.copy()
 
 
 # -------- NON-LOCAL MEANS DENOISING FILTER --------
-# ===== START INPUTS ===== 
-h_filt = 0.04       # float
+# ===== START INPUTS =====
+# h_factor scales the estimated noise level (sigma) used to derive the
+# non-local means ``h`` parameter. A value of 0.8 matches the default
+# behaviour of the interactive workflow.
+h_factor = 0.8      # float
 patch_size = 5      # int
 search_dist = 7     # int
-# ===== END INPUTS ===== 
+# ===== END INPUTS =====
 
 print(f"\nApplying non-local means denoising...")
+# Estimate the noise level to adapt the cut-off parameter similar to the
+# interactive processing workflow.
+sigma_est = srest.estimate_sigma(
+    img_as_float(img2), average_sigmas=True, channel_axis=None
+)
+h_filt = float(h_factor) * sigma_est
+print(
+    "    Estimated noise sigma: "
+    f"{sigma_est:.6f}"
+)
+print(
+    "    Derived 'h' parameter: "
+    f"{h_filt:.6f}"
+)
 filt_params = ["nl_means", h_filt, int(patch_size), int(search_dist)]
 img2 = sdrv.apply_driver_denoise(img2, filt_params)
 

@@ -17,7 +17,8 @@ from typing import List, Sequence
 
 import numpy as np
 from skimage import morphology as morph
-from skimage.util import img_as_bool, img_as_ubyte
+from skimage import restoration as srest
+from skimage.util import img_as_bool, img_as_float, img_as_ubyte
 from skimage.util import invert as ski_invert
 
 
@@ -49,7 +50,12 @@ ALLOWED_EXTENSIONS = {
 
 @dataclass(frozen=True)
 class PipelineParameters:
-    """Container for the segmentation pipeline parameters."""
+    """Container for the segmentation pipeline parameters.
+
+    For the non-local means denoiser, the second value of ``denoise`` is
+    interpreted as a multiplier for the estimated noise level (sigma) to
+    derive the ``h`` parameter.
+    """
 
     denoise: Sequence[object]
     sharpen: Sequence[object]
@@ -85,7 +91,10 @@ manual_log_level = "INFO"
 # -------- NON-LOCAL MEANS DENOISING FILTER --------
 # ===== START INPUTS =====
 manual_denoise_method = "nl_means"
-manual_h_filt = 0.04       # float
+# ``manual_h_factor`` scales the estimated noise level (sigma) used to
+# derive the non-local means ``h`` parameter. A value of 0.8 mirrors the
+# default behaviour of the interactive workflow.
+manual_h_factor = 0.8      # float
 manual_patch_size = 5      # int
 manual_search_dist = 7     # int
 # ===== END INPUTS =====
@@ -136,7 +145,7 @@ manual_min_feat_sz = 64  # int
 
 
 DEFAULT_PIPELINE = PipelineParameters(
-    denoise=("nl_means", 0.04, 5, 7),
+    denoise=("nl_means", 0.8, 5, 7),
     sharpen=("unsharp_mask", 2, 0.3),
     threshold=("hysteresis_threshold", 128, 200),
     morphology=(0, 1, 1),
@@ -193,7 +202,7 @@ def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters
     pipeline = PipelineParameters(
         denoise=(
             str(manual_denoise_method),
-            float(manual_h_filt),
+            float(manual_h_factor),
             int(manual_patch_size),
             int(manual_search_dist),
         ),
@@ -300,8 +309,21 @@ def segment_image(image: np.ndarray, params: PipelineParameters) -> np.ndarray:
         working_img = img_as_ubyte(ski_invert(working_img))
 
     logging.debug("Applying denoise filter with parameters: %s", params.denoise)
+    denoise_params = list(params.denoise)
+    if denoise_params and str(denoise_params[0]).lower() == "nl_means":
+        h_factor = float(denoise_params[1])
+        sigma_est = srest.estimate_sigma(
+            img_as_float(working_img), average_sigmas=True, channel_axis=None
+        )
+        denoise_params[1] = h_factor * sigma_est
+        logging.debug(
+            "Estimated noise sigma: %.6f; derived h parameter: %.6f",
+            sigma_est,
+            denoise_params[1],
+        )
+
     working_img = sdrv.apply_driver_denoise(
-        working_img, list(params.denoise), quiet_in=True
+        working_img, denoise_params, quiet_in=True
     )
 
     logging.debug("Applying sharpen filter with parameters: %s", params.sharpen)
