@@ -76,13 +76,13 @@ USE_MANUAL_CONFIGURATION = True
 # Provide the directories that should be used for batch processing. The input
 # directory must contain the images to be segmented. All supported images will
 # be saved to the output directory with "_segmented" appended to the filename.
-manual_input_dir = "path/to/input_directory"
-manual_output_dir = "path/to/output_directory"
+manual_input_dir = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images"
+manual_output_dir = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images"
 
 # Segmentation should result in the grain boundaries being WHITE. If the
 # resultant segmentation illustrates black grain boundaries, then the image
 # grayscale values should be inverted after they are imported.
-manual_invert_grayscales = False
+manual_invert_grayscales = True
 
 # Logging verbosity when executing in manual mode. Valid values are the same as
 # the command line interface ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL").
@@ -94,30 +94,30 @@ manual_denoise_method = "nl_means"
 # ``manual_h_factor`` scales the estimated noise level (sigma) used to
 # derive the non-local means ``h`` parameter. A value of 0.8 mirrors the
 # default behaviour of the interactive workflow.
-manual_h_factor = 0.8      # float
-manual_patch_size = 5      # int
-manual_search_dist = 7     # int
+manual_h_factor = 0.04
+manual_patch_size = 5     # int
+manual_search_dist = 7    # int
 # ===== END INPUTS =====
 
 # -------- SHARPEN FILTER --------
 # ===== START INPUTS =====
 manual_sharpen_method = "unsharp_mask"
-manual_sharp_radius = 2    # int
-manual_sharp_amount = 0.3  # float
+manual_sharp_radius = 2     # int
+manual_sharp_amount = 1.0   # float (aus deinem Lauf)
 # ===== END INPUTS =====
 
 # -------- THRESHOLDING --------
 # ===== START INPUTS =====
 # Supported methods: "hysteresis_threshold", "adaptive_threshold"
-manual_threshold_method = "hysteresis_threshold"
+manual_threshold_method = "adaptive_threshold"
 
 # Hysteresis thresholding parameters
-manual_low_val = 128        # int
-manual_high_val = 200       # int
+manual_low_val = 25.5        # int (aus deinem Lauf, wird bei adaptive ignoriert)
+manual_high_val = 51.0       # int (aus deinem Lauf, wird bei adaptive ignoriert)
 
 # Adaptive thresholding parameters
-manual_adaptive_block_size = 35  # int (should be odd and >= 3)
-manual_adaptive_offset = 0.0     # float
+manual_adaptive_block_size = 100   # int (aus deinem Lauf)
+manual_adaptive_offset = -30.0     # float (aus deinem Lauf)
 # ===== END INPUTS =====
 
 # -------- MORPHOLOGICAL OPERATIONS --------
@@ -126,12 +126,12 @@ manual_adaptive_offset = 0.0     # float
 # 1: binary_opening
 # 2: binary_dilation
 # 3: binary_erosion
-manual_op_type = 0     # int
+manual_op_type = 0     # int (binary_closing)
 
 # 0: square
 # 1: disk
 # 2: diamond
-manual_foot_type = 1   # int
+manual_foot_type = 1   # int (disk)
 
 # Kernel radius (pixels)
 manual_morph_rad = 1   # int
@@ -139,8 +139,8 @@ manual_morph_rad = 1   # int
 
 # -------- REMOVE PIXEL ISLANDS AND SMALL HOLES --------
 # ===== START INPUTS =====
-manual_max_hole_sz = 4   # int
-manual_min_feat_sz = 64  # int
+manual_max_hole_sz = 9    # int (aus deinem Lauf)
+manual_min_feat_sz = 30   # int (aus deinem Lauf)
 # ===== END INPUTS =====
 
 
