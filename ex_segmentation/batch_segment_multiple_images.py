@@ -29,6 +29,9 @@ if str(IMPPY_MODULE_PATH) not in sys.path:
 
 import import_export as imex  # noqa: E402  (local import after path setup)
 import ski_driver_functions as sdrv  # noqa: E402
+from ski_interactive_processing import (  # noqa: E402
+    interact_nl_means_denoise,
+)
 
 
 ALLOWED_EXTENSIONS = {
@@ -77,6 +80,11 @@ manual_output_dir = "path/to/output_directory"
 # resultant segmentation illustrates black grain boundaries, then the image
 # grayscale values should be inverted after they are imported.
 manual_invert_grayscales = False
+
+# When set to ``True``, launch the interactive NL-means GUI once to choose the
+# denoising parameters before processing the batch. The selected values will be
+# reused for every image in the run.
+manual_enable_interactive_nl_means = False
 
 # Logging verbosity when executing in manual mode. Valid values are the same as
 # the command line interface ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL").
@@ -158,6 +166,7 @@ def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters
         invert=bool(manual_invert_grayscales),
         max_hole_size=int(manual_max_hole_sz),
         min_feature_size=int(manual_min_feat_sz),
+        interactive_nl_means=bool(manual_enable_interactive_nl_means),
         log_level=str(manual_log_level),
     )
 
@@ -255,6 +264,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Logging verbosity level.",
     )
+    parser.add_argument(
+        "--interactive-nl-means",
+        action="store_true",
+        help=(
+            "Open the interactive NL-means GUI once to choose denoising "
+            "parameters before processing the batch."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -270,6 +287,56 @@ def collect_image_files(input_dir: Path) -> List[Path]:
         path
         for path in input_dir.iterdir()
         if path.is_file() and path.suffix.lower() in ALLOWED_EXTENSIONS
+    )
+
+
+def _update_denoise_parameters(
+    params: PipelineParameters, sample_image: np.ndarray
+) -> PipelineParameters:
+    """Open the interactive GUI and update the NL-means parameters."""
+
+    logging.info(
+        "Launching interactive NL-means parameter selection. Close the window to continue."
+    )
+    prepared_sample = img_as_ubyte(sample_image)
+    if params.invert_grayscale:
+        prepared_sample = img_as_ubyte(ski_invert(prepared_sample))
+
+    try:
+        _, fltr_params = interact_nl_means_denoise(prepared_sample)
+    except Exception as exc:  # pragma: no cover - GUI failure fallback
+        logging.exception(
+            "Interactive NL-means configuration failed: %s. Using existing parameters.",
+            exc,
+        )
+        return params
+
+    if len(fltr_params) != 4 or fltr_params[0] != "nl_means":
+        logging.error(
+            "Interactive NL-means returned unexpected parameters %s; keeping defaults.",
+            fltr_params,
+        )
+        return params
+
+    h_out = float(fltr_params[1])
+    patch_size_out = int(fltr_params[2])
+    patch_dist_out = int(fltr_params[3])
+
+    logging.info(
+        "Using interactive NL-means parameters: h=%s, patch_size=%s, patch_distance=%s",
+        h_out,
+        patch_size_out,
+        patch_dist_out,
+    )
+
+    return PipelineParameters(
+        denoise=("nl_means", h_out, patch_size_out, patch_dist_out),
+        sharpen=params.sharpen,
+        threshold=params.threshold,
+        morphology=params.morphology,
+        max_hole_size=params.max_hole_size,
+        min_feature_size=params.min_feature_size,
+        invert_grayscale=params.invert_grayscale,
     )
 
 
@@ -346,8 +413,12 @@ def process_images(
     input_dir: Path,
     output_dir: Path,
     params: PipelineParameters,
+    image_paths: Sequence[Path] | None = None,
 ) -> int:
-    image_paths = collect_image_files(input_dir)
+    if image_paths is None:
+        image_paths = collect_image_files(input_dir)
+    else:
+        image_paths = list(image_paths)
     if not image_paths:
         raise FileNotFoundError(
             f"No supported image files were found in {input_dir}."
@@ -422,8 +493,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         logging.error("%s", exc)
         return 1
 
+    image_paths = collect_image_files(args.input_dir)
+    if not image_paths:
+        logging.error(
+            "No supported image files were found in %s. Please provide readable images.",
+            args.input_dir,
+        )
+        return 1
+
+    if getattr(args, "interactive_nl_means", False):
+        logging.info(
+            "Interactive NL-means tuning requested; using %s as the sample image.",
+            image_paths[0].name,
+        )
+        sample_img, _ = imex.load_image(str(image_paths[0]), quiet_in=True)
+        if sample_img is None or sample_img.ndim != 2:
+            logging.error(
+                "Unable to load a 2D grayscale sample image from %s; proceeding with "
+                "preconfigured NL-means parameters.",
+                image_paths[0],
+            )
+        else:
+            params = _update_denoise_parameters(params, sample_img)
+
     try:
-        processed = process_images(args.input_dir, args.output_dir, params)
+        processed = process_images(
+            args.input_dir, args.output_dir, params, image_paths=image_paths
+        )
     except FileNotFoundError as exc:
         logging.error("%s", exc)
         return 1

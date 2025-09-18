@@ -17,6 +17,7 @@ import import_export as imex
 import plt_wrappers as pwrap
 import ski_driver_functions as sdrv
 import cv_processing_wrappers as cwrap
+from ski_interactive_processing import interact_nl_means_denoise
 
 # Set constants related to plotting (for MatPlotLib)
 SMALL_SIZE = 10
@@ -48,6 +49,10 @@ file_in_path = "path/to/image.tif"
 # grayscale values should be inverted after it is imported.
 invert_grayscales = True
 
+# Set to ``True`` to launch the interactive NL-means GUI once before the
+# automated denoising step. Close the window to continue execution.
+use_interactive_nl_means = False
+
 # ---- IMPORTANT ----
 # All remaining inputs are provided by each segmentation step below.
 # Scroll down and edit these as needed.
@@ -77,14 +82,43 @@ img2 = img1.copy()
 
 
 # -------- NON-LOCAL MEANS DENOISING FILTER --------
-# ===== START INPUTS ===== 
+# ===== START INPUTS =====
 h_filt = 0.04       # float
 patch_size = 5      # int
 search_dist = 7     # int
-# ===== END INPUTS ===== 
+# ===== END INPUTS =====
 
 print(f"\nApplying non-local means denoising...")
-filt_params = ["nl_means", h_filt, int(patch_size), int(search_dist)]
+if use_interactive_nl_means:
+    print("\nLaunching interactive NL-means GUI. Close the window to continue.")
+    try:
+        _, nlm_params = interact_nl_means_denoise(img_as_ubyte(img2))
+    except Exception as exc:
+        print(
+            "\nInteractive NL-means failed with an error; reverting to manual settings."
+        )
+        print(f"    Details: {exc}")
+        filt_params = ["nl_means", h_filt, int(patch_size), int(search_dist)]
+    else:
+        if len(nlm_params) == 4 and nlm_params[0] == "nl_means":
+            filt_params = [
+                "nl_means",
+                float(nlm_params[1]),
+                int(nlm_params[2]),
+                int(nlm_params[3]),
+            ]
+            print("\nUsing interactive NL-means parameters:")
+            print(f"    h: {filt_params[1]}")
+            print(f"    Patch size: {filt_params[2]}")
+            print(f"    Patch distance: {filt_params[3]}")
+        else:
+            print(
+                "\nInteractive NL-means returned unexpected values; reverting to manual settings."
+            )
+            filt_params = ["nl_means", h_filt, int(patch_size), int(search_dist)]
+else:
+    filt_params = ["nl_means", h_filt, int(patch_size), int(search_dist)]
+
 img2 = sdrv.apply_driver_denoise(img2, filt_params)
 
 
