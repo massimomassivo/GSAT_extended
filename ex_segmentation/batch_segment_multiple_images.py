@@ -60,6 +60,74 @@ class PipelineParameters:
     invert_grayscale: bool
 
 
+# -------- USER INPUTS --------
+
+# Set this flag to ``True`` to provide all configuration values directly in this
+# script (similar to ``batch_segment_single_image.py``). When ``False``, the
+# command line interface is used instead.
+USE_MANUAL_CONFIGURATION = True
+
+# Provide the directories that should be used for batch processing. The input
+# directory must contain the images to be segmented. All supported images will
+# be saved to the output directory with "_segmented" appended to the filename.
+manual_input_dir = "path/to/input_directory"
+manual_output_dir = "path/to/output_directory"
+
+# Segmentation should result in the grain boundaries being WHITE. If the
+# resultant segmentation illustrates black grain boundaries, then the image
+# grayscale values should be inverted after they are imported.
+manual_invert_grayscales = False
+
+# Logging verbosity when executing in manual mode. Valid values are the same as
+# the command line interface ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL").
+manual_log_level = "INFO"
+
+# -------- NON-LOCAL MEANS DENOISING FILTER --------
+# ===== START INPUTS =====
+manual_denoise_method = "nl_means"
+manual_h_filt = 0.04       # float
+manual_patch_size = 5      # int
+manual_search_dist = 7     # int
+# ===== END INPUTS =====
+
+# -------- SHARPEN FILTER --------
+# ===== START INPUTS =====
+manual_sharpen_method = "unsharp_mask"
+manual_sharp_radius = 2    # int
+manual_sharp_amount = 0.3  # float
+# ===== END INPUTS =====
+
+# -------- HYSTERESIS THRESHOLDING --------
+# ===== START INPUTS =====
+manual_threshold_method = "hysteresis_threshold"
+manual_low_val = 128    # int
+manual_high_val = 200   # int
+# ===== END INPUTS =====
+
+# -------- MORPHOLOGICAL OPERATIONS --------
+# ===== START INPUTS =====
+# 0: binary_closing
+# 1: binary_opening
+# 2: binary_dilation
+# 3: binary_erosion
+manual_op_type = 0     # int
+
+# 0: square
+# 1: disk
+# 2: diamond
+manual_foot_type = 1   # int
+
+# Kernel radius (pixels)
+manual_morph_rad = 1   # int
+# ===== END INPUTS =====
+
+# -------- REMOVE PIXEL ISLANDS AND SMALL HOLES --------
+# ===== START INPUTS =====
+manual_max_hole_sz = 4   # int
+manual_min_feat_sz = 64  # int
+# ===== END INPUTS =====
+
+
 DEFAULT_PIPELINE = PipelineParameters(
     denoise=("nl_means", 0.04, 5, 7),
     sharpen=("unsharp_mask", 2, 0.3),
@@ -69,6 +137,51 @@ DEFAULT_PIPELINE = PipelineParameters(
     min_feature_size=64,
     invert_grayscale=False,
 )
+
+
+def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters]:
+    """Create the ``argparse`` namespace and pipeline for manual execution."""
+
+    input_dir = Path(manual_input_dir).expanduser()
+    output_dir = Path(manual_output_dir).expanduser()
+
+    args = argparse.Namespace(
+        input_dir=input_dir,
+        output_dir=output_dir,
+        invert=bool(manual_invert_grayscales),
+        max_hole_size=int(manual_max_hole_sz),
+        min_feature_size=int(manual_min_feat_sz),
+        log_level=str(manual_log_level),
+    )
+
+    pipeline = PipelineParameters(
+        denoise=(
+            str(manual_denoise_method),
+            float(manual_h_filt),
+            int(manual_patch_size),
+            int(manual_search_dist),
+        ),
+        sharpen=(
+            str(manual_sharpen_method),
+            int(manual_sharp_radius),
+            float(manual_sharp_amount),
+        ),
+        threshold=(
+            str(manual_threshold_method),
+            int(manual_low_val),
+            int(manual_high_val),
+        ),
+        morphology=(
+            int(manual_op_type),
+            int(manual_foot_type),
+            int(manual_morph_rad),
+        ),
+        max_hole_size=args.max_hole_size,
+        min_feature_size=args.min_feature_size,
+        invert_grayscale=args.invert,
+    )
+
+    return args, pipeline
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -254,18 +367,26 @@ def process_images(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = parse_args(argv)
-    configure_logging(args.log_level)
+    if USE_MANUAL_CONFIGURATION:
+        configure_logging(str(manual_log_level))
+        try:
+            args, params = build_manual_configuration()
+        except ValueError as exc:
+            logging.error("Invalid manual configuration: %s", exc)
+            return 1
+    else:
+        args = parse_args(argv)
+        configure_logging(args.log_level)
+
+        try:
+            params = build_pipeline(args)
+        except ValueError as exc:
+            logging.error("%s", exc)
+            return 1
 
     try:
         validate_directory(args.input_dir)
     except (FileNotFoundError, NotADirectoryError) as exc:
-        logging.error("%s", exc)
-        return 1
-
-    try:
-        params = build_pipeline(args)
-    except ValueError as exc:
         logging.error("%s", exc)
         return 1
 
