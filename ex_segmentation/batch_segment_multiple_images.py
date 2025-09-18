@@ -97,11 +97,18 @@ manual_sharp_radius = 2    # int
 manual_sharp_amount = 0.3  # float
 # ===== END INPUTS =====
 
-# -------- HYSTERESIS THRESHOLDING --------
+# -------- THRESHOLDING --------
 # ===== START INPUTS =====
+# Supported methods: "hysteresis_threshold", "adaptive_threshold"
 manual_threshold_method = "hysteresis_threshold"
-manual_low_val = 128    # int
-manual_high_val = 200   # int
+
+# Hysteresis thresholding parameters
+manual_low_val = 128        # int
+manual_high_val = 200       # int
+
+# Adaptive thresholding parameters
+manual_adaptive_block_size = 35  # int (should be odd and >= 3)
+manual_adaptive_offset = 0.0     # float
 # ===== END INPUTS =====
 
 # -------- MORPHOLOGICAL OPERATIONS --------
@@ -154,6 +161,35 @@ def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters
         log_level=str(manual_log_level),
     )
 
+    threshold_method = str(manual_threshold_method)
+    if threshold_method == "hysteresis_threshold":
+        threshold_params = (
+            threshold_method,
+            int(manual_low_val),
+            int(manual_high_val),
+        )
+    elif threshold_method == "adaptive_threshold":
+        block_size = int(manual_adaptive_block_size)
+        if block_size < 3:
+            raise ValueError("manual_adaptive_block_size must be >= 3.")
+        if block_size % 2 == 0:
+            logging.debug(
+                "Adaptive threshold block size %s is even; incrementing to %s.",
+                block_size,
+                block_size + 1,
+            )
+            block_size += 1
+        threshold_params = (
+            threshold_method,
+            block_size,
+            float(manual_adaptive_offset),
+        )
+    else:  # pragma: no cover - defensive guard for manual configuration
+        raise ValueError(
+            "manual_threshold_method must be either "
+            '"hysteresis_threshold" or "adaptive_threshold".'
+        )
+
     pipeline = PipelineParameters(
         denoise=(
             str(manual_denoise_method),
@@ -166,11 +202,7 @@ def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters
             int(manual_sharp_radius),
             float(manual_sharp_amount),
         ),
-        threshold=(
-            str(manual_threshold_method),
-            int(manual_low_val),
-            int(manual_high_val),
-        ),
+        threshold=threshold_params,
         morphology=(
             int(manual_op_type),
             int(manual_foot_type),

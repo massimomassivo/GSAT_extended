@@ -98,26 +98,29 @@ def apply_driver_thresholding(img_in, fltr_params_in, quiet_in=False):
     
     fltr_params_in: A list of parameters needed to perform the threshold
         operation. The first parameter is a string, which determines
-        what type of threshold filter to be applied, as well as the 
-        definitions of the remaining parameters. As of now, 
-        fltr_params_in[0] must be "hysteresis_threshold". 
-        Example parameter lists are given below for each type, 
-            
-            ["hysteresis_threshold", low_val_out, high_val_out] 
+        what type of threshold filter to be applied, as well as the
+        definitions of the remaining parameters. Supported options are
+        shown below.
+
+            ["hysteresis_threshold", low_val_out, high_val_out]
 
                 low_val_out: Lower threshold intensity as an integer
 
                 high_val_out: Upper threshold intensity as an integer
+
+            ["adaptive_threshold", block_sz_out, offset_out]
+
+                block_sz_out: Size of the neighborhood (odd integer >= 3)
+
+                offset_out: Constant subtracted from the local mean
             
     quiet_in: A boolean that determines if this function should print
         any statements to standard output. If False (default), outputs  
         are written. Conversely, if True, outputs are suppressed. This
         is particularly useful in the event of batch processing.
             
-    NOTE: Currently, only hysteresis thresholding has been implemented
-    for thresholding from the Skimage library. For adaptive
-    thresholding or conventional global thresholding, see the OpenCV
-    interactive scripts in cv_driver_functions.py.
+    NOTE: Additional thresholding strategies can be implemented by
+    extending the conditional logic below.
 
     ---- RETURNED ----
     [img_out]: Returns the resultant Numpy image after performing the
@@ -141,17 +144,41 @@ def apply_driver_thresholding(img_in, fltr_params_in, quiet_in=False):
         low_val_in = fltr_params[1]
         high_val_in = fltr_params[2]
 
-        img_temp = filt.apply_hysteresis_threshold(img, low_val_in, 
+        img_temp = filt.apply_hysteresis_threshold(img, low_val_in,
             high_val_in)
         img_fltr = img_as_ubyte(img_temp)
-        
+
         if not quiet:
             print(f"\nSuccessfully applied the 'hysteresis_threshold':\n"\
                 f"    Lower grayscale intensity limit: {low_val_in}\n"\
                 f"    Upper grayscale intensity limit: {high_val_in}")
 
+    elif fltr_name == "adaptive_threshold":
+        block_sz_in = int(fltr_params[1])
+        if block_sz_in < 3:
+            raise ValueError("Adaptive threshold block size must be >= 3.")
+        if block_sz_in % 2 == 0:
+            block_sz_in += 1
+        offset_in = float(fltr_params[2])
+
+        thresh_map = filt.threshold_local(
+            img,
+            block_size=block_sz_in,
+            method="gaussian",
+            offset=offset_in,
+        )
+        img_temp = img > thresh_map
+        img_fltr = img_as_ubyte(img_temp)
+
+        if not quiet:
+            print(
+                "\nSuccessfully applied the 'adaptive_threshold':\n"\
+                f"    Block size (odd): {block_sz_in}\n"\
+                f"    Intensity offset: {offset_in}"
+            )
+
     else:
-        print(f"\nERROR: {fltr_name} is not a supported sharpening filter.")
+        print(f"\nERROR: {fltr_name} is not a supported threshold filter.")
         img_fltr = img
 
     return img_fltr
