@@ -6,10 +6,16 @@ The functions in this module translate TOML configuration files into
 mistakes (such as typos in option names or invalid data types) are caught
 early with human-friendly error messages.
 
-The minimal configuration required for a single run looks like this::
+The minimal configuration required for a single run can be expressed
+with the dedicated ``[paths]`` section that mirrors the command line
+arguments::
 
+    [paths]
     input_image = "path/to/image.png"
     results_dir = "results"
+
+    [pipeline]
+    row_step = 10
 
     [save_options]
     save_histograms = false
@@ -18,8 +24,11 @@ You can load the file with :func:`load_single_run_config`:
 
 >>> from pathlib import Path
 >>> _ = Path("single_config.toml").write_text(
-...     '''input_image = "sample.png"
+...     '''[paths]
+... input_image = "sample.png"
 ... results_dir = "./results"
+... [pipeline]
+... theta_steps = 8
 ... [save_options]
 ... save_boxplot = false
 ... '''
@@ -29,14 +38,17 @@ You can load the file with :func:`load_single_run_config`:
 True
 >>> config.results_base_dir == Path("./results")
 True
+>>> config.n_theta_steps
+8
 >>> save_opts.save_boxplot
 False
 >>> Path("single_config.toml").unlink()
 
 Batch configurations require at least the directories that should be
-processed.  Pipeline overrides are specified inside a dedicated
-``[pipeline]`` table::
+processed.  The ``[batch]`` section holds these paths while pipeline
+overrides are specified inside a dedicated ``[pipeline]`` table::
 
+    [batch]
     input_dir = "./images"
     output_dir = "./results"
 
@@ -44,7 +56,8 @@ processed.  Pipeline overrides are specified inside a dedicated
     row_step = 10
 
 >>> _ = Path("batch_config.toml").write_text(
-...     '''input_dir = "images"
+...     '''[batch]
+... input_dir = "images"
 ... output_dir = "batch_results"
 ... [pipeline]
 ... theta_steps = 8
@@ -198,6 +211,17 @@ def _ensure_allowed_keys(
         raise KeyError(f"Unknown configuration keys in {context}: {keys}")
 
 
+def _get_optional_section(
+    data: Mapping[str, Any], section: str, context: str
+) -> Optional[Mapping[str, Any]]:
+    if section not in data:
+        return None
+    value = data[section]
+    if not isinstance(value, Mapping):
+        raise TypeError(f"The '{section}' section must contain key/value pairs")
+    return value
+
+
 def _parse_line_grid_overrides(
     mapping: Mapping[str, Any], context: str
 ) -> Dict[str, Any]:
@@ -249,21 +273,48 @@ def load_single_run_config(path: Path) -> Tuple[LineGridConfig, SaveOptions]:
     path = Path(path)
     data = _load_toml(path)
 
-    reserved = {"input_image", "results_dir", "summary_excel", "save_options", "pipeline"}
+    reserved = {
+        "input_image",
+        "results_dir",
+        "summary_excel",
+        "save_options",
+        "pipeline",
+        "paths",
+    }
     allowed = reserved | LINE_GRID_OPTION_KEYS
     _ensure_allowed_keys(data, allowed, str(path))
 
-    input_image = Path(_require_str(data, "input_image", str(path)))
-    results_dir = Path(_require_str(data, "results_dir", str(path)))
-    summary_excel = _optional_path(data, "summary_excel", str(path))
+    paths_section = _get_optional_section(data, "paths", str(path))
+    if paths_section is not None:
+        duplicate_keys = {
+            key
+            for key in ("input_image", "results_dir", "summary_excel")
+            if key in data
+        }
+        if duplicate_keys:
+            keys = ", ".join(sorted(duplicate_keys))
+            raise ValueError(
+                "Configuration keys "
+                f"{keys} defined both at the top level and in the '[paths]' section"
+            )
+        _ensure_allowed_keys(
+            paths_section,
+            {"input_image", "results_dir", "summary_excel"},
+            f"{path}::paths",
+        )
+        input_image = Path(_require_str(paths_section, "input_image", f"{path}::paths"))
+        results_dir = Path(_require_str(paths_section, "results_dir", f"{path}::paths"))
+        summary_excel = _optional_path(paths_section, "summary_excel", f"{path}::paths")
+    else:
+        input_image = Path(_require_str(data, "input_image", str(path)))
+        results_dir = Path(_require_str(data, "results_dir", str(path)))
+        summary_excel = _optional_path(data, "summary_excel", str(path))
 
     top_level_overrides = {
         key: value for key, value in data.items() if key in LINE_GRID_OPTION_KEYS
     }
-    if "pipeline" in data:
-        pipeline_section_obj = data["pipeline"]
-        if not isinstance(pipeline_section_obj, Mapping):
-            raise TypeError("The 'pipeline' section must contain key/value pairs")
+    pipeline_section_obj = _get_optional_section(data, "pipeline", str(path))
+    if pipeline_section_obj is not None:
         pipeline_section = dict(top_level_overrides)
         for key, value in pipeline_section_obj.items():
             if key in pipeline_section:
@@ -321,23 +372,42 @@ def load_batch_run_config(path: Path) -> BatchRunConfig:
         "summary_excel",
         "save_options",
         "pipeline",
+        "batch",
     }
     allowed = reserved | LINE_GRID_OPTION_KEYS
     _ensure_allowed_keys(data, allowed, str(path))
 
-    input_dir = Path(_require_str(data, "input_dir", str(path)))
-    output_dir = Path(_require_str(data, "output_dir", str(path)))
-    summary_excel = _optional_path(data, "summary_excel", str(path))
+    batch_section = _get_optional_section(data, "batch", str(path))
+    if batch_section is not None:
+        duplicate_keys = {
+            key for key in ("input_dir", "output_dir", "summary_excel") if key in data
+        }
+        if duplicate_keys:
+            keys = ", ".join(sorted(duplicate_keys))
+            raise ValueError(
+                "Configuration keys "
+                f"{keys} defined both at the top level and in the '[batch]' section"
+            )
+        _ensure_allowed_keys(
+            batch_section,
+            {"input_dir", "output_dir", "summary_excel"},
+            f"{path}::batch",
+        )
+        input_dir = Path(_require_str(batch_section, "input_dir", f"{path}::batch"))
+        output_dir = Path(_require_str(batch_section, "output_dir", f"{path}::batch"))
+        summary_excel = _optional_path(batch_section, "summary_excel", f"{path}::batch")
+    else:
+        input_dir = Path(_require_str(data, "input_dir", str(path)))
+        output_dir = Path(_require_str(data, "output_dir", str(path)))
+        summary_excel = _optional_path(data, "summary_excel", str(path))
 
     top_level_overrides = {
         key: value for key, value in data.items() if key in LINE_GRID_OPTION_KEYS
     }
-    pipeline_section = data.get("pipeline")
+    pipeline_section = _get_optional_section(data, "pipeline", str(path))
     if pipeline_section is None:
         pipeline_mapping: Mapping[str, Any] = top_level_overrides
     else:
-        if not isinstance(pipeline_section, Mapping):
-            raise TypeError("The 'pipeline' section must contain key/value pairs")
         combined = dict(top_level_overrides)
         for key, value in pipeline_section.items():
             if key in combined:
