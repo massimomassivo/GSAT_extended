@@ -318,7 +318,9 @@ def prepare_image(config: LineGridConfig) -> PreparedImageData:
     )
 
     file_stem = config.file_in_path.stem
-    results_dir = config.results_base_dir / f"{file_stem}_results"
+    suffix = config.file_in_path.suffix.lower().lstrip(".")
+    suffix_part = f"_{suffix}" if suffix else ""
+    results_dir = config.results_base_dir / f"{file_stem}{suffix_part}_results"
     rotated_dir = results_dir / "rotated_images"
     base_output_path = results_dir / file_stem
 
