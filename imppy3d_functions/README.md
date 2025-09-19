@@ -44,7 +44,8 @@ Funktionen für den einfachen Import in den Beispielskripten.
   [`apply_driver_denoise`](./ski_driver_functions.py#L389),
   [`apply_driver_sharpen`](./ski_driver_functions.py#L242) und
   [`apply_driver_thresholding`](./ski_driver_functions.py#L87) auf, um komplexe
-  `scikit-image`-Aufrufe zu kapseln und für CLI-/Batch-Jobs zugänglich zu machen.
+  `scikit-image`-Aufrufe zu kapseln und für automatisierte Batch-Jobs zugänglich
+  zu machen.
 * Die Intersections-Pipeline nutzt
   [`grain_size_functions.find_intersections`](./grain_size_functions.py#L6) zur
   Ermittlung der Schnittpunkte sowie
@@ -63,9 +64,11 @@ häufigsten Stolperfallen bündelt:
 
 * **Invertierte Grauwerte / Binärmasken** – Für Segmentierungen, deren
   Grenzen dunkel statt hell sind, kann `apply_driver_thresh` direkt auf
-  invertierte Eingaben angewendet werden. Alternativ bietet die
-  Segmentierungs-CLI das Flag `invert_grayscale` (siehe
-  [`batch_segment_multiple_images.py`](../ex_segmentation/batch_segment_multiple_images.py)).
+  invertierte Eingaben angewendet werden. Alternativ lässt sich in den
+  Segmentierungskonfigurationen (`ManualConfiguration` bzw.
+  `PipelineParameters`, siehe
+  [`batch_segment_multiple_images.py`](../ex_segmentation/batch_segment_multiple_images.py))
+  das Feld `invert_grayscale` setzen.
 * **Batch-Ausführung** – Alle `apply_*`-Funktionen akzeptieren `quiet_in=True`,
   um Protokollausgaben in Stapelläufen zu vermeiden. Dies gilt insbesondere für
   `apply_driver_denoise`, das durch große Suchfenster deutlich längere Laufzeiten

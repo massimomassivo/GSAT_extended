@@ -1,18 +1,18 @@
 """Batch segmentation script for multiple 2D images.
 
-This command line utility loads each readable image from an input directory,
-applies a segmentation pipeline (denoise -> sharpen -> threshold ->
-morphology -> cleanup), and saves a binarized result to the specified output
+The module exposes reusable helpers for loading all readable images from an
+input directory, applying a segmentation pipeline (denoise -> sharpen ->
+threshold -> morphology -> cleanup), and saving binarized results to an output
 directory. Filenames are mirrored with a ``_segmented`` suffix.
 
-Manual execution is supported through :class:`ManualConfiguration`, which
-collects the defaults that previously lived in the ``USER INPUTS`` comment
-section. Update the dataclass fields when running the script manually.
+Configuration is performed directly in Python via :class:`ManualConfiguration`
+or through external configuration files that populate the dataclass. Command
+line parsing has deliberately been removed to favour explicit, script-driven
+setups.
 """
 
 from __future__ import annotations
 
-import argparse
 import logging
 import sys
 from dataclasses import dataclass
@@ -89,10 +89,12 @@ class PipelineParameters:
 class ManualConfiguration:
     """Manual execution defaults previously described in the ``USER INPUTS`` block.
 
+    The dataclass acts as single source of truth for scripted runs. Adjust the
+    fields directly in Python or populate them via external configuration files
+    (e.g. TOML) before invoking :func:`main`.
+
     Parameters
     ----------
-    use_manual_configuration : bool, default=True
-        Execute the script without command line parsing when ``True``.
     input_dir : str
         Directory containing the input images for batch processing.
     output_dir : str
@@ -137,7 +139,6 @@ class ManualConfiguration:
         Minimum feature size (pixels) retained during cleanup.
     """
 
-    use_manual_configuration: bool = True
     input_dir: str = (
         r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images"
     )
@@ -168,6 +169,34 @@ class ManualConfiguration:
 MANUAL_CONFIGURATION = ManualConfiguration()
 
 
+@dataclass(frozen=True)
+class ExecutionParameters:
+    """Runtime options derived from :class:`ManualConfiguration`.
+
+    Parameters
+    ----------
+    input_dir : Path
+        Directory containing the input images for batch processing.
+    output_dir : Path
+        Directory where segmented images will be written.
+    invert_grayscale : bool
+        Toggle grayscale inversion before segmentation.
+    max_hole_size : int
+        Largest hole (in pixels) that should be filled during cleanup.
+    min_feature_size : int
+        Smallest connected component (in pixels) that should be kept.
+    log_level : str
+        Logging verbosity used for manual execution.
+    """
+
+    input_dir: Path
+    output_dir: Path
+    invert_grayscale: bool
+    max_hole_size: int
+    min_feature_size: int
+    log_level: str
+
+
 DEFAULT_PIPELINE = PipelineParameters(
     denoise=("nl_means", 0.8, 5, 7),
     sharpen=("unsharp_mask", 2, 0.3),
@@ -181,7 +210,7 @@ DEFAULT_PIPELINE = PipelineParameters(
 
 def build_manual_configuration(
     config: ManualConfiguration | None = None,
-) -> tuple[argparse.Namespace, PipelineParameters]:
+) -> tuple[ExecutionParameters, PipelineParameters]:
     """Create manual execution arguments and pipeline parameters.
 
     Parameters
@@ -192,8 +221,8 @@ def build_manual_configuration(
 
     Returns
     -------
-    argparse.Namespace
-        Arguments mirroring those returned by :func:`parse_args`.
+    ExecutionParameters
+        Execution options for directory handling and logging.
     PipelineParameters
         Fully populated segmentation pipeline configuration.
 
@@ -216,10 +245,10 @@ def build_manual_configuration(
     input_dir = Path(manual.input_dir).expanduser()
     output_dir = Path(manual.output_dir).expanduser()
 
-    args = argparse.Namespace(
+    execution = ExecutionParameters(
         input_dir=input_dir,
         output_dir=output_dir,
-        invert=bool(manual.invert_grayscale),
+        invert_grayscale=bool(manual.invert_grayscale),
         max_hole_size=int(manual.max_hole_size),
         min_feature_size=int(manual.min_feature_size),
         log_level=str(manual.log_level),
@@ -271,75 +300,12 @@ def build_manual_configuration(
             int(manual.morph_footprint),
             int(manual.morph_radius),
         ),
-        max_hole_size=args.max_hole_size,
-        min_feature_size=args.min_feature_size,
-        invert_grayscale=args.invert,
+        max_hole_size=execution.max_hole_size,
+        min_feature_size=execution.min_feature_size,
+        invert_grayscale=execution.invert_grayscale,
     )
 
-    return args, pipeline
-
-
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    """Parse command line arguments for the batch segmentation CLI.
-
-    Parameters
-    ----------
-    argv : Sequence[str] or None, optional
-        Custom argument vector. When ``None`` (default) the arguments are read
-        from :data:`sys.argv`.
-
-    Returns
-    -------
-    argparse.Namespace
-        Parsed arguments describing input/output directories and pipeline
-        overrides.
-
-    Examples
-    --------
-    >>> namespace = parse_args(["--input-dir", "./images", "--output-dir", "./out"])
-    >>> namespace.input_dir
-    PosixPath('images')
-    """
-
-    parser = argparse.ArgumentParser(
-        description="Batch segment all readable images in a directory.",
-    )
-    parser.add_argument(
-        "--input-dir",
-        required=True,
-        type=Path,
-        help="Path to the directory containing images to segment.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        required=True,
-        type=Path,
-        help="Directory where segmented images will be written.",
-    )
-    parser.add_argument(
-        "--invert",
-        action="store_true",
-        help="Invert grayscale intensities before segmentation.",
-    )
-    parser.add_argument(
-        "--max-hole-size",
-        type=int,
-        default=DEFAULT_PIPELINE.max_hole_size,
-        help="Maximum hole area (pixels) to fill during cleanup.",
-    )
-    parser.add_argument(
-        "--min-feature-size",
-        type=int,
-        default=DEFAULT_PIPELINE.min_feature_size,
-        help="Minimum feature area (pixels) to retain during cleanup.",
-    )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging verbosity level.",
-    )
-    return parser.parse_args(argv)
+    return execution, pipeline
 
 
 def configure_logging(level: str) -> None:
@@ -389,13 +355,20 @@ def collect_image_files(input_dir: Path) -> List[Path]:
     )
 
 
-def build_pipeline(args: argparse.Namespace) -> PipelineParameters:
-    """Construct pipeline parameters from parsed CLI arguments.
+def build_pipeline(
+    execution: ExecutionParameters,
+    base_pipeline: PipelineParameters | None = None,
+) -> PipelineParameters:
+    """Construct pipeline parameters for the batch segmentation pipeline.
 
     Parameters
     ----------
-    args : argparse.Namespace
-        Namespace returned by :func:`parse_args`.
+    execution : ExecutionParameters
+        Execution options describing hole and feature size thresholds as well as
+        grayscale inversion.
+    base_pipeline : PipelineParameters or None, optional
+        Existing pipeline configuration that should be used as template. When
+        ``None`` (default) :data:`DEFAULT_PIPELINE` is used.
 
     Returns
     -------
@@ -405,29 +378,38 @@ def build_pipeline(args: argparse.Namespace) -> PipelineParameters:
     Raises
     ------
     ValueError
-        If ``--max-hole-size`` or ``--min-feature-size`` are negative.
+        If ``max_hole_size`` or ``min_feature_size`` are negative.
 
     Examples
     --------
-    >>> ns = argparse.Namespace(invert=True, max_hole_size=1, min_feature_size=2)
-    >>> params = build_pipeline(ns)
+    >>> execution = ExecutionParameters(
+    ...     input_dir=Path("./in"),
+    ...     output_dir=Path("./out"),
+    ...     invert_grayscale=True,
+    ...     max_hole_size=1,
+    ...     min_feature_size=2,
+    ...     log_level="INFO",
+    ... )
+    >>> params = build_pipeline(execution)
     >>> params.max_hole_size
     1
     """
 
-    if args.max_hole_size < 0:
-        raise ValueError("--max-hole-size must be non-negative.")
-    if args.min_feature_size < 0:
-        raise ValueError("--min-feature-size must be non-negative.")
+    if execution.max_hole_size < 0:
+        raise ValueError("max_hole_size must be non-negative.")
+    if execution.min_feature_size < 0:
+        raise ValueError("min_feature_size must be non-negative.")
+
+    template = base_pipeline or DEFAULT_PIPELINE
 
     return PipelineParameters(
-        denoise=DEFAULT_PIPELINE.denoise,
-        sharpen=DEFAULT_PIPELINE.sharpen,
-        threshold=DEFAULT_PIPELINE.threshold,
-        morphology=DEFAULT_PIPELINE.morphology,
-        max_hole_size=args.max_hole_size,
-        min_feature_size=args.min_feature_size,
-        invert_grayscale=args.invert,
+        denoise=template.denoise,
+        sharpen=template.sharpen,
+        threshold=template.threshold,
+        morphology=template.morphology,
+        max_hole_size=execution.max_hole_size,
+        min_feature_size=execution.min_feature_size,
+        invert_grayscale=execution.invert_grayscale,
     )
 
 
@@ -623,13 +605,20 @@ def process_images(
     return processed_count
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Entry point used by the CLI wrapper.
+def main(
+    configuration: ManualConfiguration | None = None,
+    pipeline: PipelineParameters | None = None,
+) -> int:
+    """Execute the segmentation pipeline using Python-driven configuration.
 
     Parameters
     ----------
-    argv : Sequence[str] or None, optional
-        Optional argument vector forwarded to :func:`parse_args`.
+    configuration : ManualConfiguration or None, optional
+        Manual defaults to use for the run. When ``None`` (default)
+        :data:`MANUAL_CONFIGURATION` is used.
+    pipeline : PipelineParameters or None, optional
+        Explicit pipeline configuration. When ``None`` the pipeline is derived
+        from ``configuration`` via :func:`build_manual_configuration`.
 
     Returns
     -------
@@ -638,35 +627,30 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     Examples
     --------
-    >>> main(["--input-dir", "./images", "--output-dir", "./out"])  # doctest: +SKIP
+    >>> custom = ManualConfiguration(input_dir="./images", output_dir="./out")
+    >>> main(custom)  # doctest: +SKIP
     0
     """
 
-    if MANUAL_CONFIGURATION.use_manual_configuration:
-        configure_logging(str(MANUAL_CONFIGURATION.log_level))
-        try:
-            args, params = build_manual_configuration()
-        except ValueError as exc:
-            logging.error("Invalid manual configuration: %s", exc)
-            return 1
-    else:
-        args = parse_args(argv)
-        configure_logging(args.log_level)
-
-        try:
-            params = build_pipeline(args)
-        except ValueError as exc:
-            logging.error("%s", exc)
-            return 1
+    manual = configuration or MANUAL_CONFIGURATION
+    configure_logging(str(manual.log_level))
 
     try:
-        validate_directory(args.input_dir)
+        execution, derived_pipeline = build_manual_configuration(manual)
+    except ValueError as exc:
+        logging.error("Invalid manual configuration: %s", exc)
+        return 1
+
+    params = pipeline or derived_pipeline
+
+    try:
+        validate_directory(execution.input_dir)
     except (FileNotFoundError, NotADirectoryError) as exc:
         logging.error("%s", exc)
         return 1
 
     try:
-        processed = process_images(args.input_dir, args.output_dir, params)
+        processed = process_images(execution.input_dir, execution.output_dir, params)
     except FileNotFoundError as exc:
         logging.error("%s", exc)
         return 1
@@ -674,7 +658,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if processed == 0:
         logging.error(
             "No readable images were processed from %s. Please verify the input files.",
-            args.input_dir,
+            execution.input_dir,
         )
         return 1
 

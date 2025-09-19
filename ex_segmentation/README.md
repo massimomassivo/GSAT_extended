@@ -14,9 +14,10 @@ Schwellwertbildung, Morphologie und Export aus.
    eingelesen.
 2. **Pipeline konfigurieren** – Parameter werden über die
    [`PipelineParameters`](./batch_segment_multiple_images.py)
-   Struktur festgelegt. Dies geschieht entweder im Skript selbst (`USE_MANUAL_CONFIGURATION`)
-   oder über CLI-Argumente, die von
-   [`parse_args`](./batch_segment_multiple_images.py) verarbeitet werden.
+   Struktur festgelegt. Dies geschieht direkt im Skript (z. B. via
+   [`MANUAL_CONFIGURATION`](./batch_segment_multiple_images.py)) oder über
+   externe Konfigurationsdateien, die eine
+   [`ManualConfiguration`](./batch_segment_multiple_images.py) befüllen.
 3. **Segmentierung ausführen** –
    [`process_images`](./batch_segment_multiple_images.py) bzw.
    [`segment_image`](./batch_segment_multiple_images.py)
@@ -30,7 +31,7 @@ Schwellwertbildung, Morphologie und Export aus.
 
 | Skript | Zweck | Wichtige Funktionen |
 | --- | --- | --- |
-| `batch_segment_multiple_images.py` | Stapelverarbeitung kompletter Ordner mit identischen Pipelineparametern. | [`PipelineParameters`](./batch_segment_multiple_images.py), [`build_pipeline`](./batch_segment_multiple_images.py), [`process_images`](./batch_segment_multiple_images.py) |
+| `batch_segment_multiple_images.py` | Stapelverarbeitung kompletter Ordner mit identischen Pipelineparametern. | [`PipelineParameters`](./batch_segment_multiple_images.py), [`build_manual_configuration`](./batch_segment_multiple_images.py), [`process_images`](./batch_segment_multiple_images.py) |
 | `batch_segment_single_image.py` | Vorlage für reproduzierbare Einzelbild-Segmentierung mit festen Hyperparametern. | [`sdrv.apply_driver_denoise`](../imppy3d_functions/ski_driver_functions.py), [`sdrv.apply_driver_thresholding`](../imppy3d_functions/ski_driver_functions.py), [`sdrv.apply_driver_morph`](../imppy3d_functions/ski_driver_functions.py) |
 | `interactive_processing_single_image.py` | Interaktiver Jupyter-/Matplotlib-Workflow zur Schritt-für-Schritt-Anpassung. | [`interact_adaptive_thresholding`](./interactive_processing_single_image.py), [`interact_del_features`](./interactive_processing_single_image.py), [`interact_skeletonize`](./interactive_processing_single_image.py) |
 
@@ -75,8 +76,10 @@ Skripten dokumentiert und künftig über Docstrings gepflegt.
 
 ## Sonderfälle und weiterführende Docstrings
 
-* **Invertierte Kontraste** – Wenn Korngrenzen dunkel erscheinen, kann die
-  CLI-Option `invert_grayscale` gesetzt werden. Die Auswirkungen auf die
+* **Invertierte Kontraste** – Wenn Korngrenzen dunkel erscheinen, kann in der
+  [`ManualConfiguration`](./batch_segment_multiple_images.py) bzw. in den
+  [`PipelineParameters`](./batch_segment_multiple_images.py) das Feld
+  `invert_grayscale` gesetzt werden. Die Auswirkungen auf die
   Schwellenwertlogik beschreibt der Docstring von
   [`apply_driver_thresh`](../imppy3d_functions/cv_driver_functions.py).
 * **Batch-Optimierung** – In Stapelläufen sollten die OpenCV-Treiber mit
