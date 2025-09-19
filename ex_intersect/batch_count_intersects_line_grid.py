@@ -244,9 +244,7 @@ def process_images(batch_config: BatchRunConfig, *, config_source: Optional[Path
 
     for index, image_path in enumerate(image_files, start=1):
         rel_parent = image_path.parent.relative_to(input_dir)
-        # Include the full filename so images with identical stems but different
-        # extensions are processed into distinct directories.
-        results_root = output_dir / rel_parent / image_path.name
+        results_root = output_dir / rel_parent
         ensure_directory(results_root)
 
         print(f"[INFO] Processing {image_path} ({index}/{len(image_files)})")
