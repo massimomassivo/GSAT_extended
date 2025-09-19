@@ -802,6 +802,8 @@ def _save_excel(
     start_row = ws.max_row + 2
     ws.cell(row=start_row, column=1, value="Input Parameters")
     for i, (param, value) in enumerate(input_parameters.items(), start=start_row + 1):
+        if isinstance(value, (tuple, list)):
+            value = str(value)
         ws.cell(row=i, column=1, value=param)
         ws.cell(row=i, column=2, value=value)
 
