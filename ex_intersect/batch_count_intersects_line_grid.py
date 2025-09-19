@@ -9,6 +9,15 @@ Supported image formats: PNG, JPG, JPEG, TIFF, TIF, BMP.
 
 from __future__ import annotations
 
+if __name__ == "__main__" and __package__ is None:  # pragma: no cover - IDE convenience
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    __package__ = "ex_intersect"
+
 import traceback
 from pathlib import Path
 from dataclasses import replace
@@ -16,9 +25,9 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 
-from ex_intersect import line_grid_pipeline as pipeline
-from ex_intersect.count_intersects_line_grid import configure_plot_style
-from ex_intersect.config_loader import BatchRunConfig, load_batch_run_config
+from . import line_grid_pipeline as pipeline
+from .count_intersects_line_grid import configure_plot_style
+from .config_loader import BatchRunConfig, load_batch_run_config
 
 SUPPORTED_EXTENSIONS: Tuple[str, ...] = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp")
 
