@@ -70,7 +70,12 @@ All new and updated functions should include [NumPy-style docstrings](https://nu
 
 ## README und Docstrings
 
-Verwende das README für den Überblick über den Gesamtworkflow, zentrale Skripte und typische Einstiegspunkte. Detailfragen zu einzelnen Funktionen, Eingabeparametern und Fehlerfällen werden in den zugehörigen Docstrings beantwortet. So ergänzt sich die Dokumentation: Das README führt durch die großen Schritte (Segmentierung → Intersect-Zählung → Auswertung), während die Docstrings die konkrete Implementierung erläutern.
+Verwende das README für den Überblick über den Gesamtworkflow, zentrale Skripte und typische Einstiegspunkte. Detailfragen zu einzelnen Funktionen, Eingabeparametern und Fehlerfällen werden in den zugehörigen Docstrings beantwortet. So ergänzt sich die Dokumentation: Das README führt durch die großen Schritte (Segmentierung → Intersect-Zählung → Auswertung), während die Docstrings die konkrete Implementierung erläutern. Die Ordner-READMEs verlinken direkt auf die wichtigsten Docstrings, u. a. für `apply_driver_thresh`, `apply_driver_blob_fill` und `apply_driver_denoise`.
+
+## Offene Punkte
+
+* Weitere Module in `imppy3d_functions` (z. B. `import_export.py`) sukzessive auf den NumPy-Docstring-Standard umstellen.
+* Beispielskripte um kurze Hinweise ergänzen, welche `apply_*`-Treiber bei invertierten Kontrasten den Vorverarbeitungsschritt übernehmen.
 
 ## Support
 If you encounter any bugs or unintended behavior, please create an "Issue" and report a bug. You can also make a request for new features in this way. 
