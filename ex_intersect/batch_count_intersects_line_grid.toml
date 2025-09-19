@@ -2,8 +2,8 @@
 # Werte in [pipeline] und [save_options] dienen als globale Defaults für alle Bilder.
 
 [batch]
-input_dir = "path/to/segmented_images" # Ordner mit allen zu analysierenden Binärbildern.
-output_dir = "path/to/batch_results" # Zielordner, in dem Unterordner pro Bild angelegt werden.
+input_dir = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/binarised_images" # Ordner mit allen zu analysierenden Binärbildern.
+output_dir = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/results" # Zielordner, in dem Unterordner pro Bild angelegt werden.
 # summary_excel = "path/to/shared_summary.xlsx" # Optionales gemeinsames Excel-Logbuch für alle Batch-Läufe.
 
 [pipeline]
