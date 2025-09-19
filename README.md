@@ -28,14 +28,14 @@ The GSAT separates the process of measuring grain size into two steps: 1) the fi
    1. Kopieren bzw. bearbeiten Sie `ex_intersect/count_intersects_line_grid.toml`
       und setzen Sie `paths.input_image`, `paths.results_dir` sowie weitere
       Parameter unter `[pipeline]` und `[save_options]`.
-   2. Starten Sie anschließend die Auswertung:
-      ```bash
-      python -m ex_intersect.count_intersects_line_grid
-      ```
-      Für Serienverarbeitung steht `python -m ex_intersect.batch_count_intersects_line_grid`
-      bereit; beide Befehle lesen ihre Einstellungen vollständig aus den TOML-Dateien.
-   3. Optional: Öffnen Sie `.runme.yaml` in [Runme](https://runme.dev/) oder
-      einem kompatiblen Terminal, um die Kommandos ohne Tippen zu starten.
+   2. Starten Sie den Einzel-Lauf aus dem Projektstamm mit  
+      `python -m ex_intersect.count_intersects_line_grid`. Keine zusätzlichen
+      Flags; alle Parameter werden aus `count_intersects_line_grid.toml` im
+      selben Verzeichnis wie das Skript gelesen.
+   3. Für Serienverarbeitung gilt analog  
+      `python -m ex_intersect.batch_count_intersects_line_grid`. Auch hier
+      stammen sämtliche Einstellungen aus `batch_count_intersects_line_grid.toml`
+      im Skriptverzeichnis.
 
 Core helper utilities live in `imppy3d_functions/`; ensure the example scripts can resolve this directory (via the bundled `sys.path.insert` statements) if you relocate files.
 
