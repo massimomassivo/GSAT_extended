@@ -8,10 +8,10 @@ output_dir = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/results" # Zielo
 
 [pipeline]
 row_step = 20 # Pixelabstand zwischen den untersuchten Linien des Gitters.
-theta_start = 0.0 # Startwinkel (in Grad) für die Rotation des virtuellen Linealrasters.
+theta_start = 30.0 # Startwinkel (in Grad) für die Rotation des virtuellen Linealrasters.
 theta_end = 180.0 # Endwinkel (in Grad); wird bei Bedarf per inclusive_theta_end ausgewertet.
 n_theta_steps = 6 # Anzahl der gleichmäßig verteilten Rotationswinkel für jedes Bild.
-inclusive_theta_end = false # Endwinkel exakt einbeziehen (True) oder ausschließen (False).
+inclusive_theta_end = true # Endwinkel exakt einbeziehen (True) oder ausschließen (False).
 reskeletonize = true # Vor der Messung eine zusätzliche Skelettierung durchführen.
 scalebar_pixel = 464.0 # Länge der Skalierungsleiste im Bild (in Pixeln).
 scalebar_micrometer = 50.0 # Reale Länge der Skalierungsleiste (in Mikrometern).
