@@ -161,6 +161,49 @@ class SaveArtifacts:
     rotated_image_paths: List[Path] = field(default_factory=list)
 
 
+def describe_measurements(measurements: "LineMeasurementResult") -> None:
+    """Log how many segments were detected for each orientation."""
+
+    for label, distances in zip(
+        measurements.theta_labels, measurements.per_theta_distances
+    ):
+        count = int(distances.size)
+        print(
+            "  Completed processing intersects for the "
+            f"{float(label):.2f} deg orientation with {count} segments..."
+        )
+
+
+def _print_angle_statistics(stat: "AngleStatistics") -> None:
+    """Print statistics for a single rotation angle."""
+
+    if stat.angle_label == "All Lines":
+        header = "\n --- All Lines Grain Size Statistics --- "
+    else:
+        header = f"\n --- Grain Size Statistics for {stat.angle_label} deg --- "
+    print(header)
+    print(f"  Total Number of Grain Segments: {stat.segment_count}")
+    print(f"  Summed Length of Grain Segments (µm): {stat.total_length:.2f}")
+    print(f"  Average Grain Size (µm): {stat.average_length:.2f}")
+    print(f"  Median Grain Size (µm): {stat.median_length:.2f}")
+    print(f"  Std. Deviation in Grain Size (µm): {stat.std_dev:.2f}")
+    print(
+        f"  Thickness from Average Inverse Grain Size (µm): {stat.thickness_from_average:.2f}"
+    )
+    print(
+        f"  Thickness from Median Inverse Grain Size (µm): {stat.thickness_from_median:.2f}"
+    )
+
+
+def print_statistics(statistics: "StatisticsResult") -> None:
+    """Emit a human-readable summary of the computed statistics."""
+
+    print("\n\n ========== RESULTS SUMMARY ========== ")
+    for angle_stat in statistics.angle_statistics:
+        _print_angle_statistics(angle_stat)
+    _print_angle_statistics(statistics.overall_statistics)
+
+
 def prepare_image(config: LineGridConfig) -> PreparedImageData:
     """Load the input image and apply pre-processing steps.
 
@@ -427,6 +470,22 @@ def save_outputs(
         plt.close("all")
 
     return artifacts
+
+
+def process_image(
+    config: LineGridConfig, options: Optional[SaveOptions] = None
+) -> Tuple[StatisticsResult, SaveArtifacts]:
+    """Execute the full measurement pipeline and persist artefacts."""
+
+    print("\nCounting intersect distances for each orientation...")
+    prepared = prepare_image(config)
+    measurements = measure_line_intersections(prepared, config)
+    describe_measurements(measurements)
+    statistics = aggregate_statistics(measurements, config)
+    print_statistics(statistics)
+    artifacts = save_outputs(prepared, measurements, statistics, config, options)
+    print("\nScript successfully terminated!")
+    return statistics, artifacts
 
 
 def _compute_angle_statistics(
