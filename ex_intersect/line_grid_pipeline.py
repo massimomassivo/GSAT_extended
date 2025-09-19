@@ -162,7 +162,24 @@ class SaveArtifacts:
 
 
 def describe_measurements(measurements: "LineMeasurementResult") -> None:
-    """Log how many segments were detected for each orientation."""
+    """Log how many segments were detected for each orientation.
+
+    Parameters
+    ----------
+    measurements : LineMeasurementResult
+        Measured distances and labels returned by :func:`measure_line_intersections`.
+
+    Examples
+    --------
+    >>> describe_measurements(LineMeasurementResult(  # doctest: +SKIP
+    ...     distances=np.empty((0, 2)),
+    ...     inverse_distances=np.empty((0, 2)),
+    ...     per_theta_distances=[],
+    ...     per_theta_inverse_distances=[],
+    ...     theta_labels=[],
+    ...     rotated_images=[],
+    ... ))
+    """
 
     for label, distances in zip(
         measurements.theta_labels, measurements.per_theta_distances
@@ -175,7 +192,13 @@ def describe_measurements(measurements: "LineMeasurementResult") -> None:
 
 
 def _print_angle_statistics(stat: "AngleStatistics") -> None:
-    """Print statistics for a single rotation angle."""
+    """Print statistics for a single rotation angle.
+
+    Parameters
+    ----------
+    stat : AngleStatistics
+        Statistics calculated by :func:`aggregate_statistics`.
+    """
 
     if stat.angle_label == "All Lines":
         header = "\n --- All Lines Grain Size Statistics --- "
@@ -196,7 +219,35 @@ def _print_angle_statistics(stat: "AngleStatistics") -> None:
 
 
 def print_statistics(statistics: "StatisticsResult") -> None:
-    """Emit a human-readable summary of the computed statistics."""
+    """Emit a human-readable summary of the computed statistics.
+
+    Parameters
+    ----------
+    statistics : StatisticsResult
+        Aggregated statistics returned by :func:`aggregate_statistics`.
+
+    Examples
+    --------
+    >>> print_statistics(StatisticsResult(  # doctest: +SKIP
+    ...     angle_statistics=[],
+    ...     overall_statistics=AngleStatistics(
+    ...         angle_label="All Lines",
+    ...         segment_count=0,
+    ...         total_length=0.0,
+    ...         average_length=float("nan"),
+    ...         median_length=float("nan"),
+    ...         std_dev=float("nan"),
+    ...         average_inverse=float("nan"),
+    ...         median_inverse=float("nan"),
+    ...         thickness_from_average=float("nan"),
+    ...         thickness_from_median=float("nan"),
+    ...     ),
+    ...     results_table=pd.DataFrame(),
+    ...     distances_df=pd.DataFrame(),
+    ...     inverse_distances_df=pd.DataFrame(),
+    ...     summary_row=pd.DataFrame(),
+    ... ))
+    """
 
     print("\n\n ========== RESULTS SUMMARY ========== ")
     for angle_stat in statistics.angle_statistics:
@@ -207,7 +258,25 @@ def print_statistics(statistics: "StatisticsResult") -> None:
 def prepare_image(config: LineGridConfig) -> PreparedImageData:
     """Load the input image and apply pre-processing steps.
 
-    Returns the padded image, metadata and derived paths used by later stages.
+    Parameters
+    ----------
+    config : LineGridConfig
+        Configuration describing the file paths and cropping parameters.
+
+    Returns
+    -------
+    PreparedImageData
+        Pre-processed images, metadata and derived directories used downstream.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the input image cannot be loaded.
+
+    Examples
+    --------
+    >>> cfg = LineGridConfig(file_in_path="image.png", results_base_dir=Path("./results"))  # doctest: +SKIP
+    >>> prepared = prepare_image(cfg)  # doctest: +SKIP
     """
 
     img1, img1_prop = imex.load_image(str(config.file_in_path))
@@ -270,7 +339,30 @@ def prepare_image(config: LineGridConfig) -> PreparedImageData:
 def measure_line_intersections(
     prepared: PreparedImageData, config: LineGridConfig
 ) -> LineMeasurementResult:
-    """Measure all line intersections for the configured rotations."""
+    """Measure all line intersections for the configured rotations.
+
+    Parameters
+    ----------
+    prepared : PreparedImageData
+        Image data returned by :func:`prepare_image`.
+    config : LineGridConfig
+        Pipeline configuration providing sampling and morphology options.
+
+    Returns
+    -------
+    LineMeasurementResult
+        Distances and intermediate artefacts for each rotation angle.
+
+    Raises
+    ------
+    ValueError
+        Propagated from driver functions when invalid parameters are provided.
+
+    Examples
+    --------
+    >>> measure_line_intersections(prepared, config)  # doctest: +SKIP
+    LineMeasurementResult(...)
+    """
 
     distances: List[Tuple[float, float]] = []
     inverse_distances: List[Tuple[float, float]] = []
@@ -337,7 +429,30 @@ def measure_line_intersections(
 def aggregate_statistics(
     measurements: LineMeasurementResult, config: LineGridConfig
 ) -> StatisticsResult:
-    """Compute statistics for each rotation and aggregate across angles."""
+    """Compute statistics for each rotation and aggregate across angles.
+
+    Parameters
+    ----------
+    measurements : LineMeasurementResult
+        Measured intersection distances produced by :func:`measure_line_intersections`.
+    config : LineGridConfig
+        Pipeline configuration providing metadata for the summary row.
+
+    Returns
+    -------
+    StatisticsResult
+        Per-angle statistics, combined statistics and tabular artefacts.
+
+    Raises
+    ------
+    ValueError
+        Propagated if invalid numeric operations occur during aggregation.
+
+    Examples
+    --------
+    >>> aggregate_statistics(measurements, config)  # doctest: +SKIP
+    StatisticsResult(...)
+    """
 
     properties = [
         "Total Number of Grain Segments",
@@ -425,7 +540,36 @@ def save_outputs(
     config: LineGridConfig,
     options: Optional[SaveOptions] = None,
 ) -> SaveArtifacts:
-    """Persist selected artefacts produced by the pipeline."""
+    """Persist selected artefacts produced by the pipeline.
+
+    Parameters
+    ----------
+    prepared : PreparedImageData
+        Pre-processed images and output paths.
+    measurements : LineMeasurementResult
+        Distances and rotated images produced by :func:`measure_line_intersections`.
+    statistics : StatisticsResult
+        Aggregated statistics produced by :func:`aggregate_statistics`.
+    config : LineGridConfig
+        Pipeline configuration describing file names and metadata.
+    options : SaveOptions, optional
+        Flags controlling which artefacts are persisted. ``None`` creates defaults.
+
+    Returns
+    -------
+    SaveArtifacts
+        Paths to the artefacts that were written to disk.
+
+    Raises
+    ------
+    OSError
+        Propagated when writing artefacts fails.
+
+    Examples
+    --------
+    >>> save_outputs(prepared, measurements, statistics, config)  # doctest: +SKIP
+    SaveArtifacts(...)
+    """
 
     options = options or SaveOptions()
     artifacts = SaveArtifacts()
@@ -475,7 +619,32 @@ def save_outputs(
 def process_image(
     config: LineGridConfig, options: Optional[SaveOptions] = None
 ) -> Tuple[StatisticsResult, SaveArtifacts]:
-    """Execute the full measurement pipeline and persist artefacts."""
+    """Execute the full measurement pipeline and persist artefacts.
+
+    Parameters
+    ----------
+    config : LineGridConfig
+        Configuration describing the input image and processing parameters.
+    options : SaveOptions, optional
+        Flags controlling which artefacts are stored.
+
+    Returns
+    -------
+    tuple of (:class:`StatisticsResult`, :class:`SaveArtifacts`)
+        Final statistics and references to written artefacts.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the input image does not exist.
+    OSError
+        Propagated when saving artefacts fails.
+
+    Examples
+    --------
+    >>> process_image(config)  # doctest: +SKIP
+    (StatisticsResult(...), SaveArtifacts(...))
+    """
 
     print("\nCounting intersect distances for each orientation...")
     prepared = prepare_image(config)

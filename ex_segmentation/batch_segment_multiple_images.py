@@ -4,6 +4,10 @@ This command line utility loads each readable image from an input directory,
 applies a segmentation pipeline (denoise -> sharpen -> threshold ->
 morphology -> cleanup), and saves a binarized result to the specified output
 directory. Filenames are mirrored with a ``_segmented`` suffix.
+
+Manual execution is supported through :class:`ManualConfiguration`, which
+collects the defaults that previously lived in the ``USER INPUTS`` comment
+section. Update the dataclass fields when running the script manually.
 """
 
 from __future__ import annotations
@@ -52,9 +56,24 @@ ALLOWED_EXTENSIONS = {
 class PipelineParameters:
     """Container for the segmentation pipeline parameters.
 
-    For the non-local means denoiser, the second value of ``denoise`` is
-    interpreted as a multiplier for the estimated noise level (sigma) to
-    derive the ``h`` parameter.
+    Parameters
+    ----------
+    denoise : Sequence[object]
+        Driver arguments forwarded to :func:`ski_driver_functions.apply_driver_denoise`.
+        When the selected method is ``"nl_means"`` the second value is interpreted
+        as a multiplier for the estimated noise level to derive the ``h`` parameter.
+    sharpen : Sequence[object]
+        Arguments for :func:`ski_driver_functions.apply_driver_sharpen`.
+    threshold : Sequence[object]
+        Arguments for :func:`ski_driver_functions.apply_driver_thresholding`.
+    morphology : Sequence[object]
+        Arguments for :func:`ski_driver_functions.apply_driver_morph`.
+    max_hole_size : int
+        Largest hole (in pixels) that should be filled during cleanup.
+    min_feature_size : int
+        Smallest connected component (in pixels) that should be kept.
+    invert_grayscale : bool
+        Toggle grayscale inversion before segmentation.
     """
 
     denoise: Sequence[object]
@@ -66,82 +85,87 @@ class PipelineParameters:
     invert_grayscale: bool
 
 
-# -------- USER INPUTS --------
+@dataclass
+class ManualConfiguration:
+    """Manual execution defaults previously described in the ``USER INPUTS`` block.
 
-# Set this flag to ``True`` to provide all configuration values directly in this
-# script (similar to ``batch_segment_single_image.py``). When ``False``, the
-# command line interface is used instead.
-USE_MANUAL_CONFIGURATION = True
+    Parameters
+    ----------
+    use_manual_configuration : bool, default=True
+        Execute the script without command line parsing when ``True``.
+    input_dir : str
+        Directory containing the input images for batch processing.
+    output_dir : str
+        Directory where segmented images will be written.
+    invert_grayscale : bool, default=True
+        Invert grayscale values during manual processing.
+    log_level : str, default='INFO'
+        Logging verbosity used for manual execution.
+    denoise_method : str, default='nl_means'
+        Identifier of the denoising algorithm to apply.
+    h_factor : float, default=0.04
+        Multiplier applied to the estimated noise sigma to derive the ``h`` value.
+    patch_size : int, default=5
+        Side length of the neighbourhood used by the denoiser.
+    search_distance : int, default=7
+        Search window radius for the non-local means filter.
+    sharpen_method : str, default='unsharp_mask'
+        Name of the sharpening driver to execute.
+    sharpen_radius : int, default=2
+        Radius parameter passed to the sharpening filter.
+    sharpen_amount : float, default=1.0
+        Amount parameter forwarded to the sharpening filter.
+    threshold_method : str, default='adaptive_threshold'
+        Thresholding approach (``'hysteresis_threshold'`` or ``'adaptive_threshold'``).
+    hysteresis_low : float, default=25.5
+        Lower bound used when hysteresis thresholding is selected.
+    hysteresis_high : float, default=51.0
+        Upper bound used when hysteresis thresholding is selected.
+    adaptive_block_size : int, default=100
+        Window size used for adaptive thresholding (must be odd and >= 3).
+    adaptive_offset : float, default=-30.0
+        Constant offset used by adaptive thresholding.
+    morph_operation : int, default=0
+        Morphology operation identifier (0=closing, 1=opening, 2=dilation, 3=erosion).
+    morph_footprint : int, default=1
+        Shape identifier for the morphology footprint (0=square, 1=disk, 2=diamond).
+    morph_radius : int, default=1
+        Radius of the morphology footprint in pixels.
+    max_hole_size : int, default=9
+        Maximum hole size (pixels) filled during cleanup.
+    min_feature_size : int, default=30
+        Minimum feature size (pixels) retained during cleanup.
+    """
 
-# Provide the directories that should be used for batch processing. The input
-# directory must contain the images to be segmented. All supported images will
-# be saved to the output directory with "_segmented" appended to the filename.
-manual_input_dir = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images"
-manual_output_dir = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images"
+    use_manual_configuration: bool = True
+    input_dir: str = (
+        r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images"
+    )
+    output_dir: str = (
+        r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images"
+    )
+    invert_grayscale: bool = True
+    log_level: str = "INFO"
+    denoise_method: str = "nl_means"
+    h_factor: float = 0.04
+    patch_size: int = 5
+    search_distance: int = 7
+    sharpen_method: str = "unsharp_mask"
+    sharpen_radius: int = 2
+    sharpen_amount: float = 1.0
+    threshold_method: str = "adaptive_threshold"
+    hysteresis_low: float = 25.5
+    hysteresis_high: float = 51.0
+    adaptive_block_size: int = 100
+    adaptive_offset: float = -30.0
+    morph_operation: int = 0
+    morph_footprint: int = 1
+    morph_radius: int = 1
+    max_hole_size: int = 9
+    min_feature_size: int = 30
 
-# Segmentation should result in the grain boundaries being WHITE. If the
-# resultant segmentation illustrates black grain boundaries, then the image
-# grayscale values should be inverted after they are imported.
-manual_invert_grayscales = True
 
-# Logging verbosity when executing in manual mode. Valid values are the same as
-# the command line interface ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL").
-manual_log_level = "INFO"
-
-# -------- NON-LOCAL MEANS DENOISING FILTER --------
-# ===== START INPUTS =====
-manual_denoise_method = "nl_means"
-# ``manual_h_factor`` scales the estimated noise level (sigma) used to
-# derive the non-local means ``h`` parameter. A value of 0.8 mirrors the
-# default behaviour of the interactive workflow.
-manual_h_factor = 0.04
-manual_patch_size = 5     # int
-manual_search_dist = 7    # int
-# ===== END INPUTS =====
-
-# -------- SHARPEN FILTER --------
-# ===== START INPUTS =====
-manual_sharpen_method = "unsharp_mask"
-manual_sharp_radius = 2     # int
-manual_sharp_amount = 1.0   # float (aus deinem Lauf)
-# ===== END INPUTS =====
-
-# -------- THRESHOLDING --------
-# ===== START INPUTS =====
-# Supported methods: "hysteresis_threshold", "adaptive_threshold"
-manual_threshold_method = "adaptive_threshold"
-
-# Hysteresis thresholding parameters
-manual_low_val = 25.5        # int (aus deinem Lauf, wird bei adaptive ignoriert)
-manual_high_val = 51.0       # int (aus deinem Lauf, wird bei adaptive ignoriert)
-
-# Adaptive thresholding parameters
-manual_adaptive_block_size = 100   # int (aus deinem Lauf)
-manual_adaptive_offset = -30.0     # float (aus deinem Lauf)
-# ===== END INPUTS =====
-
-# -------- MORPHOLOGICAL OPERATIONS --------
-# ===== START INPUTS =====
-# 0: binary_closing
-# 1: binary_opening
-# 2: binary_dilation
-# 3: binary_erosion
-manual_op_type = 0     # int (binary_closing)
-
-# 0: square
-# 1: disk
-# 2: diamond
-manual_foot_type = 1   # int (disk)
-
-# Kernel radius (pixels)
-manual_morph_rad = 1   # int
-# ===== END INPUTS =====
-
-# -------- REMOVE PIXEL ISLANDS AND SMALL HOLES --------
-# ===== START INPUTS =====
-manual_max_hole_sz = 9    # int (aus deinem Lauf)
-manual_min_feat_sz = 30   # int (aus deinem Lauf)
-# ===== END INPUTS =====
+MANUAL_CONFIGURATION = ManualConfiguration()
 
 
 DEFAULT_PIPELINE = PipelineParameters(
@@ -155,32 +179,63 @@ DEFAULT_PIPELINE = PipelineParameters(
 )
 
 
-def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters]:
-    """Create the ``argparse`` namespace and pipeline for manual execution."""
+def build_manual_configuration(
+    config: ManualConfiguration | None = None,
+) -> tuple[argparse.Namespace, PipelineParameters]:
+    """Create manual execution arguments and pipeline parameters.
 
-    input_dir = Path(manual_input_dir).expanduser()
-    output_dir = Path(manual_output_dir).expanduser()
+    Parameters
+    ----------
+    config : ManualConfiguration or None, default=None
+        Manual defaults to use for the run. When ``None``,
+        :data:`MANUAL_CONFIGURATION` is used.
+
+    Returns
+    -------
+    argparse.Namespace
+        Arguments mirroring those returned by :func:`parse_args`.
+    PipelineParameters
+        Fully populated segmentation pipeline configuration.
+
+    Raises
+    ------
+    ValueError
+        If the adaptive block size is smaller than three or if an unsupported
+        threshold method is selected.
+
+    Examples
+    --------
+    >>> manual = ManualConfiguration(input_dir="~/images", output_dir="~/segmented")
+    >>> args, pipeline = build_manual_configuration(manual)
+    >>> args.output_dir.name
+    'segmented'
+    """
+
+    manual = config or MANUAL_CONFIGURATION
+
+    input_dir = Path(manual.input_dir).expanduser()
+    output_dir = Path(manual.output_dir).expanduser()
 
     args = argparse.Namespace(
         input_dir=input_dir,
         output_dir=output_dir,
-        invert=bool(manual_invert_grayscales),
-        max_hole_size=int(manual_max_hole_sz),
-        min_feature_size=int(manual_min_feat_sz),
-        log_level=str(manual_log_level),
+        invert=bool(manual.invert_grayscale),
+        max_hole_size=int(manual.max_hole_size),
+        min_feature_size=int(manual.min_feature_size),
+        log_level=str(manual.log_level),
     )
 
-    threshold_method = str(manual_threshold_method)
+    threshold_method = str(manual.threshold_method)
     if threshold_method == "hysteresis_threshold":
         threshold_params = (
             threshold_method,
-            int(manual_low_val),
-            int(manual_high_val),
+            int(manual.hysteresis_low),
+            int(manual.hysteresis_high),
         )
     elif threshold_method == "adaptive_threshold":
-        block_size = int(manual_adaptive_block_size)
+        block_size = int(manual.adaptive_block_size)
         if block_size < 3:
-            raise ValueError("manual_adaptive_block_size must be >= 3.")
+            raise ValueError("adaptive_block_size must be >= 3 for manual execution.")
         if block_size % 2 == 0:
             logging.debug(
                 "Adaptive threshold block size %s is even; incrementing to %s.",
@@ -191,31 +246,30 @@ def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters
         threshold_params = (
             threshold_method,
             block_size,
-            float(manual_adaptive_offset),
+            float(manual.adaptive_offset),
         )
     else:  # pragma: no cover - defensive guard for manual configuration
         raise ValueError(
-            "manual_threshold_method must be either "
-            '"hysteresis_threshold" or "adaptive_threshold".'
+            "threshold_method must be either 'hysteresis_threshold' or 'adaptive_threshold'."
         )
 
     pipeline = PipelineParameters(
         denoise=(
-            str(manual_denoise_method),
-            float(manual_h_factor),
-            int(manual_patch_size),
-            int(manual_search_dist),
+            str(manual.denoise_method),
+            float(manual.h_factor),
+            int(manual.patch_size),
+            int(manual.search_distance),
         ),
         sharpen=(
-            str(manual_sharpen_method),
-            int(manual_sharp_radius),
-            float(manual_sharp_amount),
+            str(manual.sharpen_method),
+            int(manual.sharpen_radius),
+            float(manual.sharpen_amount),
         ),
         threshold=threshold_params,
         morphology=(
-            int(manual_op_type),
-            int(manual_foot_type),
-            int(manual_morph_rad),
+            int(manual.morph_operation),
+            int(manual.morph_footprint),
+            int(manual.morph_radius),
         ),
         max_hole_size=args.max_hole_size,
         min_feature_size=args.min_feature_size,
@@ -226,6 +280,27 @@ def build_manual_configuration() -> tuple[argparse.Namespace, PipelineParameters
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse command line arguments for the batch segmentation CLI.
+
+    Parameters
+    ----------
+    argv : Sequence[str] or None, optional
+        Custom argument vector. When ``None`` (default) the arguments are read
+        from :data:`sys.argv`.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments describing input/output directories and pipeline
+        overrides.
+
+    Examples
+    --------
+    >>> namespace = parse_args(["--input-dir", "./images", "--output-dir", "./out"])
+    >>> namespace.input_dir
+    PosixPath('images')
+    """
+
     parser = argparse.ArgumentParser(
         description="Batch segment all readable images in a directory.",
     )
@@ -268,6 +343,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def configure_logging(level: str) -> None:
+    """Initialise the logging module with a consistent format.
+
+    Parameters
+    ----------
+    level : str
+        Logging level such as ``"INFO"`` or ``"DEBUG"``.
+
+    Examples
+    --------
+    >>> configure_logging("DEBUG")
+    >>> logging.getLogger().level >= logging.DEBUG
+    True
+    """
+
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -275,6 +364,24 @@ def configure_logging(level: str) -> None:
 
 
 def collect_image_files(input_dir: Path) -> List[Path]:
+    """Return sorted paths to supported images found in ``input_dir``.
+
+    Parameters
+    ----------
+    input_dir : Path
+        Directory that should be scanned for image files.
+
+    Returns
+    -------
+    list of Path
+        Sorted list of file paths matching :data:`ALLOWED_EXTENSIONS`.
+
+    Examples
+    --------
+    >>> collect_image_files(Path("./nonexistent"))
+    []
+    """
+
     return sorted(
         path
         for path in input_dir.iterdir()
@@ -283,6 +390,31 @@ def collect_image_files(input_dir: Path) -> List[Path]:
 
 
 def build_pipeline(args: argparse.Namespace) -> PipelineParameters:
+    """Construct pipeline parameters from parsed CLI arguments.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Namespace returned by :func:`parse_args`.
+
+    Returns
+    -------
+    PipelineParameters
+        Configuration for the segmentation stages.
+
+    Raises
+    ------
+    ValueError
+        If ``--max-hole-size`` or ``--min-feature-size`` are negative.
+
+    Examples
+    --------
+    >>> ns = argparse.Namespace(invert=True, max_hole_size=1, min_feature_size=2)
+    >>> params = build_pipeline(ns)
+    >>> params.max_hole_size
+    1
+    """
+
     if args.max_hole_size < 0:
         raise ValueError("--max-hole-size must be non-negative.")
     if args.min_feature_size < 0:
@@ -300,7 +432,32 @@ def build_pipeline(args: argparse.Namespace) -> PipelineParameters:
 
 
 def segment_image(image: np.ndarray, params: PipelineParameters) -> np.ndarray:
-    """Apply the segmentation pipeline to a single image array."""
+    """Apply denoising, sharpening, thresholding and cleanup to ``image``.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Two-dimensional grayscale image that should be segmented.
+    params : PipelineParameters
+        Configuration describing each processing stage.
+
+    Returns
+    -------
+    numpy.ndarray
+        Binarised representation of the segmented image.
+
+    Raises
+    ------
+    ValueError
+        If parameter validation in downstream driver functions fails.
+
+    Examples
+    --------
+    >>> params = DEFAULT_PIPELINE
+    >>> segmented = segment_image(np.zeros((5, 5), dtype=np.uint8), params)
+    >>> segmented.shape
+    (5, 5)
+    """
 
     working_img = img_as_ubyte(image)
 
@@ -358,6 +515,25 @@ def segment_image(image: np.ndarray, params: PipelineParameters) -> np.ndarray:
 
 
 def validate_directory(path: Path) -> None:
+    """Ensure that ``path`` exists and refers to a directory.
+
+    Parameters
+    ----------
+    path : Path
+        Directory to validate.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the path does not exist.
+    NotADirectoryError
+        If the path exists but is not a directory.
+
+    Examples
+    --------
+    >>> validate_directory(Path("."))
+    """
+
     if not path.exists():
         raise FileNotFoundError(f"Directory does not exist: {path}")
     if not path.is_dir():
@@ -369,6 +545,33 @@ def process_images(
     output_dir: Path,
     params: PipelineParameters,
 ) -> int:
+    """Segment every supported image inside ``input_dir``.
+
+    Parameters
+    ----------
+    input_dir : Path
+        Directory containing the images to process.
+    output_dir : Path
+        Destination directory for the segmented images.
+    params : PipelineParameters
+        Configuration describing how each image should be segmented.
+
+    Returns
+    -------
+    int
+        Number of images that were successfully processed and saved.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``input_dir`` does not contain any supported images.
+
+    Examples
+    --------
+    >>> process_images(Path("./images"), Path("./segmented"), DEFAULT_PIPELINE)
+    0
+    """
+
     image_paths = collect_image_files(input_dir)
     if not image_paths:
         raise FileNotFoundError(
@@ -421,8 +624,26 @@ def process_images(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    if USE_MANUAL_CONFIGURATION:
-        configure_logging(str(manual_log_level))
+    """Entry point used by the CLI wrapper.
+
+    Parameters
+    ----------
+    argv : Sequence[str] or None, optional
+        Optional argument vector forwarded to :func:`parse_args`.
+
+    Returns
+    -------
+    int
+        Zero on success, non-zero if validation or processing fails.
+
+    Examples
+    --------
+    >>> main(["--input-dir", "./images", "--output-dir", "./out"])  # doctest: +SKIP
+    0
+    """
+
+    if MANUAL_CONFIGURATION.use_manual_configuration:
+        configure_logging(str(MANUAL_CONFIGURATION.log_level))
         try:
             args, params = build_manual_configuration()
         except ValueError as exc:

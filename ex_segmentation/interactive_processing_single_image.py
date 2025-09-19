@@ -1,3 +1,19 @@
+"""Interactive segmentation workflow for a single 2D micrograph.
+
+The script mirrors the original "USER INPUTS" section with module-level
+variables that control where the image is loaded from, where the segmented
+result is saved and whether intensities should be inverted.
+
+Parameters
+----------
+file_in_path : str, default='C:/Users/maxbe/PycharmProjects/GSAT_native/images/native_images/M-34524 - 2503i12549.jpg'
+    Path to the source image that should be processed.
+file_out_path : str, default='C:/Users/maxbe/PycharmProjects/GSAT_native/images/binarised_images/M-34524 - 2503i12549_segmented.jpg'
+    Location where the segmented image will be persisted.
+invert_grayscales : bool, default=True
+    Invert grayscale values when grain boundaries are darker than the matrix.
+"""
+
 # Import external dependencies
 import sys
 import numpy as np
@@ -32,19 +48,10 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)   # Legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # Fontsize of the figure title
 
 
-# -------- USER INPUTS --------
-
-# Provide the filepath to the image that should be imported and segmented.
-# Imported images will be converted to grayscale as UINT8 (i.e., max
-# grayscale intensities of 255).
 file_in_path = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images\M-34524 - 2503i12549.jpg"
 
-# The resultant segmentation will be saved in the following filepath.
 file_out_path = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images\M-34524 - 2503i12549_segmented.jpg"
 
-# Segmentation should result in the grain boundaries being WHITE. If the
-# resultant segmentation illustrates black grain boundaries, then the image
-# grayscale values should be inverted after it is imported.
 invert_grayscales = True
 
 
@@ -77,7 +84,27 @@ img2 = sdrv.interact_driver_denoise(img2, "nl_means")
 
 # --------- INTERACTIVE CANNY EDGE --------
 
-def interact_canny_edge(img_in):
+def interact_canny_edge(
+    img_in: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, list[object]]:
+    """Interactively tune a Canny edge detector on ``img_in``.
+
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        Two-dimensional grayscale image displayed in the interactive figure.
+
+    Returns
+    -------
+    tuple of (numpy.ndarray, numpy.ndarray, list of object)
+        A tuple containing the preview image with emphasised edges, the binary
+        mask of detected edges and the parameter list passed to the driver.
+
+    Examples
+    --------
+    >>> interact_canny_edge(np.zeros((32, 32), dtype=np.uint8))  # doctest: +SKIP
+    (array([[...]]), array([[...]]), ['canny', ...])
+    """
 
     img_0 = img_in.copy()
 
@@ -168,7 +195,7 @@ def interact_canny_edge(img_in):
     # Save final filter parameters
     fltr_params = ["canny", sigma_out, low_thresh_out, high_thresh_out]
 
-    return [img_out, mask_out, fltr_params]
+    return img_out, mask_out, fltr_params
 
 # Uncomment below to use Canny edge detection. 
 print(f"\nInitiating interactive canny edge detection...")
@@ -184,7 +211,27 @@ print(f"\nInitiating interactive sharpening filter...")
 img2 = sdrv.interact_driver_sharpen(img2, "unsharp_mask")
 
 
-def interact_adaptive_thresholding(img_in):
+def interact_adaptive_thresholding(
+    img_in: np.ndarray,
+) -> tuple[np.ndarray, list[float]]:
+    """Interactively select adaptive threshold parameters for ``img_in``.
+
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        Grayscale image that should be binarised.
+
+    Returns
+    -------
+    tuple of (numpy.ndarray, list of float)
+        Tuple containing the binarised image and a list ``[block_size, offset]``
+        with the chosen parameters.
+
+    Examples
+    --------
+    >>> interact_adaptive_thresholding(np.ones((32, 32), dtype=np.uint8))  # doctest: +SKIP
+    (array([[...]]), [23, -5.0])
+    """
     img_0 = img_in.copy()
 
     # Initial values
@@ -249,7 +296,7 @@ def interact_adaptive_thresholding(img_in):
     # Save final filter parameters
     fltr_params = [block_sz, thresh_offset]
 
-    return [img_out, fltr_params]
+    return img_out, fltr_params
 
 # Uncomment below to use adaptive thresholding
 print(f"\nInitiating interactive adaptive thresholding...")
@@ -272,7 +319,26 @@ img2 = sdrv.interact_driver_morph(img2)
 
 # -------- REMOVE PIXEL ISLANDS AND SMALL HOLES --------
 
-def interact_del_features(img_in):
+def interact_del_features(
+    img_in: np.ndarray,
+) -> tuple[np.ndarray, list[int]]:
+    """Interactively remove small objects and fill holes in ``img_in``.
+
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        Binary image from which small features should be removed.
+
+    Returns
+    -------
+    tuple of (numpy.ndarray, list of int)
+        Tuple containing the cleaned binary image and ``[max_hole_size, min_feature_size]``.
+
+    Examples
+    --------
+    >>> interact_del_features(np.zeros((16, 16), dtype=np.uint8))  # doctest: +SKIP
+    (array([[...]]), [9, 3])
+    """
 
     img_0 = img_in.copy()
 
@@ -336,7 +402,7 @@ def interact_del_features(img_in):
     # Save final filter parameters
     fltr_params = [max_hole_sz, min_feat_sz]
 
-    return [img_out, fltr_params]
+    return img_out, fltr_params
 
 print(f"\nInitiating interactive deletion of small features and filling small holes...")
 img2, del_params = interact_del_features(img2)
@@ -350,7 +416,26 @@ print(f"    Minimum feature (area) size: {del_params[1]} pixels")
 
 # -------- SKELETONIZE --------
 
-def interact_skeletonize(img_in):
+def interact_skeletonize(
+    img_in: np.ndarray,
+) -> tuple[np.ndarray, list[bool]]:
+    """Interactively toggle skeletonisation of ``img_in``.
+
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        Binary image for which a morphological skeleton should optionally be computed.
+
+    Returns
+    -------
+    tuple of (numpy.ndarray, list of bool)
+        Tuple containing the possibly skeletonised image and ``[apply_skeletonise]``.
+
+    Examples
+    --------
+    >>> interact_skeletonize(np.ones((8, 8), dtype=np.uint8))  # doctest: +SKIP
+    (array([[...]]), [True])
+    """
 
     img_0 = img_in.copy()
 
@@ -411,7 +496,7 @@ def interact_skeletonize(img_in):
     # Save final filter parameters
     fltr_params = [apply_skel]
 
-    return [img_out, fltr_params]
+    return img_out, fltr_params
 
 print(f"\nInitiating interactive skeletonization...")
 img2, skel_params = interact_skeletonize(img2)
