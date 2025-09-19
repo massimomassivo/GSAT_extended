@@ -9,6 +9,16 @@ Supported image formats: PNG, JPG, JPEG, TIFF, TIF, BMP.
 
 from __future__ import annotations
 
+# --- Import shim: allows "Run Current File" AND `python -m` without breaking package imports ---
+import sys
+from pathlib import Path as _Path
+
+# project root = parent of package folder that contains this file
+_PROJECT_ROOT = _Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+# --- End import shim ---
+
 import traceback
 from pathlib import Path
 from dataclasses import replace
@@ -40,10 +50,10 @@ def find_image_files(input_dir: Path, extensions: Tuple[str, ...]) -> List[Path]
 
     Examples
     --------
-    >>> find_image_files(Path("."), (".nonexistent",))
-    []
-    """
+    .. code-block:: python
 
+        find_image_files(Path("."), (".nonexistent",))  # -> []
+    """
     files = [
         path
         for path in input_dir.rglob("*")
@@ -78,22 +88,19 @@ def build_config_and_options(
 
     Examples
     --------
-    >>> from ex_intersect.config_loader import BatchRunConfig  # doctest: +SKIP
-    >>> cfg = BatchRunConfig(Path('.'), Path('./out'), None, {}, pipeline.SaveOptions())  # doctest: +SKIP
-    >>> config, options = build_config_and_options(  # doctest: +SKIP
-    ...     Path("image.png"), cfg, Path("."), Path("summary.xlsx")
-    ... )
-    """
+    .. code-block:: python
 
+        # from ex_intersect.config_loader import BatchRunConfig
+        # cfg = BatchRunConfig(Path('.'), Path('./out'), None, {}, pipeline.SaveOptions())
+        # config, options = build_config_and_options(Path("image.png"), cfg, Path("."), Path("summary.xlsx"))
+    """
     overrides = dict(batch_config.line_grid_overrides)
     overrides.setdefault("results_base_dir", results_root)
     overrides.setdefault("summary_excel_path", summary_path)
     overrides["file_in_path"] = Path(image_path)
 
     config = pipeline.LineGridConfig(**overrides)
-
     options = replace(batch_config.save_options)
-
     return config, options
 
 
@@ -112,10 +119,10 @@ def update_summary_aggregates(summary_path: Path) -> Optional[pd.DataFrame]:
 
     Examples
     --------
-    >>> update_summary_aggregates(Path("nonexistent.xlsx")) is None
-    True
-    """
+    .. code-block:: python
 
+        # update_summary_aggregates(Path("nonexistent.xlsx"))  # -> None
+    """
     if not summary_path.exists():
         return None
 
@@ -162,11 +169,11 @@ def ensure_directory(path: Path) -> None:
 
     Examples
     --------
-    >>> ensure_directory(Path("./_tmp_directory"))
-    >>> Path("./_tmp_directory").exists()
-    True
-    """
+    .. code-block:: python
 
+        ensure_directory(Path("./_tmp_directory"))
+        Path("./_tmp_directory").exists()  # -> True
+    """
     path.mkdir(parents=True, exist_ok=True)
 
 
@@ -190,7 +197,6 @@ def process_images(batch_config: BatchRunConfig, *, config_source: Optional[Path
     OSError
         If the ``output_dir`` directory cannot be created.
     """
-
     input_dir = Path(batch_config.input_dir)
     output_dir = Path(batch_config.output_dir)
     config_label = (
@@ -302,9 +308,7 @@ def main(config_path: Optional[Path] = None) -> None:
         ``batch_count_intersects_line_grid.toml`` next to this module when not
         provided.
     """
-
     configure_plot_style()
-
     resolved_path = Path(config_path) if config_path is not None else Path(__file__).with_suffix(".toml")
     batch_config = load_batch_run_config(resolved_path)
     process_images(batch_config, config_source=resolved_path)

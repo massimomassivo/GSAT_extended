@@ -2,8 +2,8 @@
 # Dupliziere diese Datei und passe die Werte auf dein Projekt an.
 
 [paths]
-input_image = "path/to/segmented_image.tif" # Binäres Segmentierungsbild, das ausgewertet werden soll.
-results_dir = "path/to/results_directory" # Basisordner, in dem alle Ergebnisdateien abgelegt werden.
+input_image = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/binarised_images/m-34524 - 2503i12549_segmented.jpg" # Binäres Segmentierungsbild, das ausgewertet werden soll.
+results_dir = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/results" # Basisordner, in dem alle Ergebnisdateien abgelegt werden.
 # summary_excel = "path/to/project_summary.xlsx" # Optionales gemeinsames Excel-Logbuch für mehrere Läufe.
 
 [pipeline]
