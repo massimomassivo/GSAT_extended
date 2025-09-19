@@ -2,22 +2,13 @@
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
 from matplotlib import pyplot as plt
 
-from ex_intersect.line_grid_pipeline import (
-    AngleStatistics,
-    LineGridConfig,
-    SaveArtifacts,
-    SaveOptions,
-    StatisticsResult,
-    aggregate_statistics,
-    measure_line_intersections,
-    prepare_image,
-    save_outputs,
-)
+from ex_intersect import line_grid_pipeline as pipeline
 
 MEDIUM_SIZE = 12
 BIGGER_SIZE = 14
@@ -35,88 +26,193 @@ def configure_plot_style() -> None:
     plt.rc("figure", titlesize=BIGGER_SIZE)
 
 
-def _print_angle_statistics(stat: AngleStatistics) -> None:
-    """Print statistics for a single rotation angle."""
+def build_config_from_user_inputs(
+    args: Optional[Sequence[str]] = None,
+) -> Tuple[pipeline.LineGridConfig, pipeline.SaveOptions]:
+    """Create a configuration and save options object from CLI parameters."""
 
-    if stat.angle_label == "All Lines":
-        header = "\n --- All Lines Grain Size Statistics --- "
-    else:
-        header = f"\n --- Grain Size Statistics for {stat.angle_label} deg --- "
-    print(header)
-    print(f"  Total Number of Grain Segments: {stat.segment_count}")
-    print(f"  Summed Length of Grain Segments (µm): {stat.total_length:.2f}")
-    print(f"  Average Grain Size (µm): {stat.average_length:.2f}")
-    print(f"  Median Grain Size (µm): {stat.median_length:.2f}")
-    print(f"  Std. Deviation in Grain Size (µm): {stat.std_dev:.2f}")
-    print(
-        f"  Thickness from Average Inverse Grain Size (µm): {stat.thickness_from_average:.2f}"
-    )
-    print(
-        f"  Thickness from Median Inverse Grain Size (µm): {stat.thickness_from_median:.2f}"
-    )
-
-
-def print_statistics(statistics: StatisticsResult) -> None:
-    """Emit a human-readable summary of the computed statistics."""
-
-    print("\n\n ========== RESULTS SUMMARY ========== ")
-    for angle_stat in statistics.angle_statistics:
-        _print_angle_statistics(angle_stat)
-    _print_angle_statistics(statistics.overall_statistics)
-
-
-def describe_measurements(
-    theta_labels: Sequence[str], segment_counts: Sequence[int]
-) -> None:
-    """Log how many segments were detected per orientation."""
-
-    for label, count in zip(theta_labels, segment_counts):
-        print(
-            "  Completed processing intersects for the "
-            f"{float(label):.2f} deg orientation with {count} segments..."
+    parser = argparse.ArgumentParser(
+        description=(
+            "Count grain intercept lengths on a segmented micrograph using "
+            "the line-grid intersection pipeline."
         )
+    )
+    parser.add_argument(
+        "input_image",
+        nargs="?",
+        default="path/to/segmented_image.jpg",
+        help="Path to the segmented binary image that should be analysed.",
+    )
+    parser.add_argument(
+        "--results-dir",
+        default="path/to/results_directory",
+        help=(
+            "Directory where result artefacts will be stored. A sub-directory "
+            "matching the image stem will be created automatically."
+        ),
+    )
+    parser.add_argument(
+        "--summary-excel",
+        default=None,
+        help=(
+            "Optional path to an Excel workbook that should collect the "
+            "summary rows from multiple runs."
+        ),
+    )
+
+    parser.add_argument(
+        "--row-step",
+        type=int,
+        default=20,
+        help="Row sampling step that controls how densely the grid is sampled.",
+    )
+    parser.add_argument(
+        "--theta-start",
+        type=float,
+        default=0.0,
+        help="First rotation angle of the virtual line grid in degrees.",
+    )
+    parser.add_argument(
+        "--theta-end",
+        type=float,
+        default=180.0,
+        help="Last rotation angle of the virtual line grid in degrees.",
+    )
+    parser.add_argument(
+        "--theta-steps",
+        type=int,
+        default=6,
+        help="Number of rotation angles that should be evaluated.",
+    )
+    parser.add_argument(
+        "--inclusive-theta-end",
+        action="store_true",
+        help="Include the end angle as part of the rotation sweep.",
+    )
+
+    parser.add_argument(
+        "--scalebar-pixel",
+        type=float,
+        default=464.0,
+        help="Pixel length of the scale bar drawn on the image.",
+    )
+    parser.add_argument(
+        "--scalebar-micrometer",
+        type=float,
+        default=50.0,
+        help="Physical length of the scale bar in micrometres.",
+    )
+    parser.add_argument(
+        "--crop-rows",
+        type=int,
+        nargs=2,
+        metavar=("START", "END"),
+        default=(0, 1825),
+        help="Row range that should be analysed (start inclusive, end exclusive).",
+    )
+    parser.add_argument(
+        "--crop-cols",
+        type=int,
+        nargs=2,
+        metavar=("START", "END"),
+        default=(0, 2580),
+        help="Column range that should be analysed (start inclusive, end exclusive).",
+    )
+
+    parser.add_argument(
+        "--borders-black",
+        dest="borders_white",
+        action="store_false",
+        help="Invert the binary image before processing because borders are dark.",
+    )
+    parser.add_argument(
+        "--no-reskeletonize",
+        dest="reskeletonize",
+        action="store_false",
+        help="Skip morphological clean-up before measuring intersections.",
+    )
+    parser.set_defaults(borders_white=True, reskeletonize=True)
+
+    parser.add_argument(
+        "--save-rotated-images",
+        action="store_true",
+        help="Persist each rotated intermediate image used during processing.",
+    )
+    parser.add_argument(
+        "--no-boxplot",
+        dest="save_boxplot",
+        action="store_false",
+        help="Disable creation of the distribution boxplot.",
+    )
+    parser.add_argument(
+        "--no-histograms",
+        dest="save_histograms",
+        action="store_false",
+        help="Disable creation of histogram graphics for the distances.",
+    )
+    parser.add_argument(
+        "--no-excel",
+        dest="save_excel",
+        action="store_false",
+        help="Skip writing the detailed Excel workbook with the results.",
+    )
+    parser.add_argument(
+        "--no-summary",
+        dest="append_summary",
+        action="store_false",
+        help="Do not append a summary row to the shared summary workbook.",
+    )
+    parser.add_argument(
+        "--show-plots",
+        action="store_true",
+        help="Show Matplotlib figures instead of closing them automatically.",
+    )
+    parser.set_defaults(
+        save_boxplot=True,
+        save_histograms=True,
+        save_excel=True,
+        append_summary=True,
+        show_plots=False,
+    )
+
+    parsed = parser.parse_args(args)
+
+    config = pipeline.LineGridConfig(
+        file_in_path=Path(parsed.input_image),
+        results_base_dir=Path(parsed.results_dir),
+        summary_excel_path=Path(parsed.summary_excel)
+        if parsed.summary_excel
+        else None,
+        borders_white=parsed.borders_white,
+        row_step=parsed.row_step,
+        theta_start=parsed.theta_start,
+        theta_end=parsed.theta_end,
+        n_theta_steps=parsed.theta_steps,
+        inclusive_theta_end=parsed.inclusive_theta_end,
+        reskeletonize=parsed.reskeletonize,
+        scalebar_pixel=parsed.scalebar_pixel,
+        scalebar_micrometer=parsed.scalebar_micrometer,
+        crop_rows=tuple(parsed.crop_rows),
+        crop_cols=tuple(parsed.crop_cols),
+    )
+    options = pipeline.SaveOptions(
+        save_rotated_images=parsed.save_rotated_images,
+        save_boxplot=parsed.save_boxplot,
+        save_histograms=parsed.save_histograms,
+        save_excel=parsed.save_excel,
+        append_summary=parsed.append_summary,
+        show_plots=parsed.show_plots,
+    )
+    return config, options
 
 
-def run_pipeline(
-    config: LineGridConfig, options: Optional[SaveOptions] = None
-) -> Tuple[StatisticsResult, SaveArtifacts]:
-    """Execute the full measurement pipeline and persist artefacts."""
-
-    print("\nCounting intersect distances for each orientation...")
-    prepared = prepare_image(config)
-    measurements = measure_line_intersections(prepared, config)
-    segment_counts = tuple(len(arr) for arr in measurements.per_theta_distances)
-    describe_measurements(measurements.theta_labels, segment_counts)
-    statistics = aggregate_statistics(measurements, config)
-    print_statistics(statistics)
-    artifacts = save_outputs(prepared, measurements, statistics, config, options)
-    print("\nScript successfully terminated!")
-    return statistics, artifacts
-
-
-def main() -> None:
-    """Example configuration that mirrors the former script defaults."""
+def main(args: Optional[Sequence[str]] = None) -> None:
+    """Parse user inputs, configure Matplotlib, and run the pipeline."""
 
     configure_plot_style()
-    config = LineGridConfig(
-        file_in_path=Path("path/to/segmented_image.jpg"),
-        results_base_dir=Path("path/to/results_directory"),
-        borders_white=True,
-        row_step=20,
-        theta_start=0.0,
-        theta_end=180.0,
-        n_theta_steps=6,
-        inclusive_theta_end=False,
-        reskeletonize=True,
-        scalebar_pixel=464,
-        scalebar_micrometer=50,
-        crop_rows=(0, 1825),
-        crop_cols=(0, 2580),
-    )
-    options = SaveOptions(show_plots=True)
-    run_pipeline(config, options)
+    config, options = build_config_from_user_inputs(args)
+    pipeline.process_image(config, options)
 
 
 if __name__ == "__main__":
     main()
-
