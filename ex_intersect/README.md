@@ -79,3 +79,16 @@ Die Pipeline erzeugt daraufhin eine Excel-Datei mit den
 einen aktualisierten Summary-Eintrag über
 [`_append_summary_excel`](./line_grid_pipeline.py#L643). Die zugehörigen
 Docstrings werden in den jeweiligen Funktionen gepflegt.
+
+## Sonderfälle und weiterführende Docstrings
+
+* **Invertierte Masken** – Nutzen Sie das CLI-Flag `--borders-black`, wenn die
+  Segmentierung dunkle Grenzen liefert. Details zur Schwellenwertbehandlung
+  liefert [`apply_driver_thresh`](../imppy3d_functions/cv_driver_functions.py#L758).
+* **Restartefacts entfernen** – Vor der Intersectionsauswertung können kleine
+  Inseln mit [`apply_driver_blob_fill`](../imppy3d_functions/cv_driver_functions.py#L918)
+  entfernt werden; der Docstring erläutert Flächen-, Rundheits- und
+  Aspektverhältnis-Filter.
+* **Batch-Läufe** – Für umfangreiche Serien sollte `quiet_in=True` an den
+  OpenCV-Treibern gesetzt werden, um Log-Ausgaben zu begrenzen (siehe
+  [`apply_driver_denoise`](../imppy3d_functions/cv_driver_functions.py#L1072)).

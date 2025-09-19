@@ -3,7 +3,8 @@
 Dieses Paket bündelt wiederverwendbare Hilfsfunktionen und Wrapper, die von den
 Segmentierungs- (`ex_segmentation`) und Intersections-Pipelines
 (`ex_intersect`) gemeinsam genutzt werden. Jede Funktion erhält sukzessive
-Docstrings; bis dahin dient diese Übersicht als Einstiegspunkt.
+Docstrings sind für alle zentralen Treiberfunktionen verfügbar und
+ergänzen die tabellarische Übersicht.
 
 ## Modulüberblick
 
@@ -13,7 +14,7 @@ Docstrings; bis dahin dient diese Übersicht als Einstiegspunkt.
 | `ski_driver_functions.py` | High-Level-Wrapper für häufige `scikit-image`-Operationen (Thresholding, Morphologie, Filter). | [`apply_driver_thresholding`](./ski_driver_functions.py#L87), [`apply_driver_morph`](./ski_driver_functions.py#L720), [`interact_driver_denoise`](./ski_driver_functions.py#L318) |
 | `grain_size_functions.py` | Werkzeuge zur Geometrie- und Intersections-Analyse. | [`find_intersections`](./grain_size_functions.py#L6), [`measure_line_dist`](./grain_size_functions.py#L196), [`mark_segments_on_image`](./grain_size_functions.py#L311) |
 | `volume_image_processing.py` | Utility-Funktionen für volumetrische Daten bzw. Padding. | [`pad_image_boundary`](./volume_image_processing.py#L4) |
-| `cv_driver_functions.py` | OpenCV-basierte Treiberfunktionen. | [`apply_driver_blur`](./cv_driver_functions.py#L86), [`apply_driver_thresh`](./cv_driver_functions.py#L913) |
+| `cv_driver_functions.py` | OpenCV-basierte Treiberfunktionen. | [`apply_driver_blur`](./cv_driver_functions.py#L81), [`apply_driver_thresh`](./cv_driver_functions.py#L758) |
 | `cv_processing_wrappers.py` | Hilfsfunktionen rund um Histogramm-Equalisierung und Morphologie. | [`normalize_histogram`](./cv_processing_wrappers.py#L156), [`multi_morph`](./cv_processing_wrappers.py#L237) |
 | `plt_wrappers.py` | Hilfsfunktionen für standardisierte Matplotlib-Layouts. | [`create_bw_fig`](./plt_wrappers.py#L4), [`create_2_bw_figs`](./plt_wrappers.py#L42) |
 | `cv_interactive_processing.py` / `ski_interactive_processing.py` | Interaktive GUI-Elemente zur Parameterfindung. | [`interact_average_filter`](./cv_interactive_processing.py#L16), [`interact_unsharp_mask`](./ski_interactive_processing.py#L17) |
@@ -52,5 +53,24 @@ Funktionen für den einfachen Import in den Beispielskripten.
   [`apply_driver_morph_3d`](./ski_driver_functions.py#L851) bereit, die in
   zukünftigen Projekten zum Einsatz kommen.
 
-Alle genannten Symbole werden künftig mit Docstrings dokumentiert, die direkt im
-Quellcode abrufbar sind.
+Ausführliche Parameter- und Seiteneffektbeschreibungen befinden sich in den
+Docstrings der genannten Funktionen (siehe Links in der Tabelle).
+
+## Sonderfälle und Batch-Hinweise
+
+Die Docstrings der `cv_driver_functions` verweisen auf diesen Abschnitt, der die
+häufigsten Stolperfallen bündelt:
+
+* **Invertierte Grauwerte / Binärmasken** – Für Segmentierungen, deren
+  Grenzen dunkel statt hell sind, kann `apply_driver_thresh` direkt auf
+  invertierte Eingaben angewendet werden. Alternativ bietet die
+  Segmentierungs-CLI das Flag `invert_grayscale` (siehe
+  [`batch_segment_multiple_images.py`](../ex_segmentation/batch_segment_multiple_images.py)).
+* **Batch-Ausführung** – Alle `apply_*`-Funktionen akzeptieren `quiet_in=True`,
+  um Protokollausgaben in Stapelläufen zu vermeiden. Dies gilt insbesondere für
+  `apply_driver_denoise`, das durch große Suchfenster deutlich längere Laufzeiten
+  hat.
+* **Interaktive Vorschau vs. Skriptnutzung** – Die `interact_*`-Varianten öffnen
+  OpenCV-Fenster und blockieren den Thread, bis Enter oder Esc gedrückt wird.
+  Für die Dokumentation der zugehörigen Parameterlisten siehe die jeweiligen
+  `apply_*`-Docstrings (z. B. [`apply_driver_morph`](./cv_driver_functions.py#L547)).

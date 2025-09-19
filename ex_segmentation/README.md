@@ -72,3 +72,18 @@ verarbeitet wird.
 
 Weitere Parameter (z. B. Plot-/Logging-Einstellungen) werden in den jeweiligen
 Skripten dokumentiert und künftig über Docstrings gepflegt.
+
+## Sonderfälle und weiterführende Docstrings
+
+* **Invertierte Kontraste** – Wenn Korngrenzen dunkel erscheinen, kann die
+  CLI-Option `invert_grayscale` gesetzt werden. Die Auswirkungen auf die
+  Schwellenwertlogik beschreibt der Docstring von
+  [`apply_driver_thresh`](../imppy3d_functions/cv_driver_functions.py#L758).
+* **Batch-Optimierung** – In Stapelläufen sollten die OpenCV-Treiber mit
+  `quiet_in=True` aufgerufen werden, um die Ausgabe schlank zu halten. Siehe
+  [`apply_driver_denoise`](../imppy3d_functions/cv_driver_functions.py#L1072)
+  für Details zu Laufzeit und Parameterwahl.
+* **Interaktive Feinanpassung** – Die interaktiven Gegenstücke (z. B.
+  [`interact_driver_morph`](../imppy3d_functions/cv_driver_functions.py#L511))
+  öffnen Fenster mit Trackbars und geben die Parameterlisten exakt in der
+  Reihenfolge zurück, die die entsprechenden `apply_*`-Funktionen erwarten.

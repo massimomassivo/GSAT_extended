@@ -8,44 +8,39 @@ import cv_interactive_processing as ifun
 
 
 def interact_driver_blur(img_in, fltr_name_in):
-    """
-    Interactively implements a blur filter on the provided image. The
-    parameters for the image processing are controlled by trackbars in
-    the interactive window, and the resultant effects are updated in
-    real-time. Upon hitting the Enter or Esc keys, the interactive 
-    window closes, and then this function returns the final image. Basic
-    details of the supported blur filters are given below, but more
-    details are available at "https://docs.opencv.org/4.2.0/d4/d13/
-    tutorial_py_filtering.html". This function is related to 
-    apply_driver_blur(...).
+    """Preview blur filters interactively for a grayscale image.
 
-    ---- INPUT ARGUMENTS ----
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel.
-    
-    fltr_name_in: A string that represents the name of the blur filter
-        to be applied. Can be either "average", "gaussian", "median", or
-        "bilateral".  
-            
-            "average": Equal-weighted averaging kernel
-            
-            "gaussian": Gaussian-weighted kernel
-            
-            "median": The center weight of kernal is the median value
-            
-            "bilateral": Edge-preserving Gaussian kernel
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` array representing the grayscale source image. The
+        input is consumed read-only and is therefore expected to be
+        pre-normalised for the intended filter.
+    fltr_name_in : str
+        Name of the blur filter to preview (``"average"``,
+        ``"gaussian"``, ``"median"`` or ``"bilateral"``). The argument is
+        case-insensitive.
 
-    ---- RETURNED ----
-    [img_fltr]: Returns the final image after closing the interactive
-        session. img_fltr is in the same format as img_in.
+    Returns
+    -------
+    numpy.ndarray
+        Filtered image that reflects the settings selected when closing
+        the GUI window. The array shares the ``uint8`` dtype and shape of
+        ``img_in``.
 
-    ---- SIDE EFFECTS ----
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Side Effects
+    ------------
+    Opens OpenCV windows with trackbars and prints status messages while
+    the session is active.
+
+    Notes
+    -----
+    More details on the mathematical filters are available in the OpenCV
+    tutorial ``https://docs.opencv.org/4.2.0/d4/d13/tutorial_py_filtering.html``.
+    Spezifische Sonderfälle (invertierte Grauwerte, Batch-Vorschau) sind
+    im Abschnitt ``Sonderfälle und Batch-Hinweise`` der
+    ``imppy3d_functions``-README erläutert und werden von den
+    ``apply_*``-Funktionen geteilt.
     """
 
     # ---- Start Local Copies ----
@@ -84,65 +79,40 @@ def interact_driver_blur(img_in, fltr_name_in):
 
 
 def apply_driver_blur(img_in, fltr_params_in, quiet_in=False):
-    """
-    Applies a blur filter to the provided image based on the input
-    parameters. This is the non-interactive version of the related
-    function, interact_driver_blur(...). For more details about the
-    supported blur filters, go to "https://docs.opencv.org/4.2.0/d4/
-    d13/tutorial_py_filtering.html".
+    """Apply a configured blur filter without user interaction.
 
-    ---- INPUT ARGUMENTS ----
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel.
-    
-    [fltr_params_in]: A list of parameters needed to perform the blur
-        operation. The first parameter is a string, which determines
-        what type of blur filter to be applied, as well as the 
-        definitions of the remaining parameters. fltr_params_in[0] can
-        either be "average", "gaussian", "median", or "bilateral". 
-        Example parameter lists are given below for each type,
-            
-            ["average", (k_size, k_size)]
-                k_size: Kernel size for the average filter. If zero, 
-                    then no filter was applied.
-            
-            ["gaussian", (k_size,k_size), std_dev]
-                k_size: Kernel size for the Gaussian filter. If zero, 
-                    then no filter was applied. Must be odd.
-                std_dev: Standard deviation for the Gaussian kernel. If
-                    std_dev < 0, then the standard deviation is
-                    automatically calucated using, 
-                    0.3*((k_size - 1)*0.5 - 1) + 0.8
-            
-            ["median", k_size]
-                k_size: Kernel size for the median filter. If zero, 
-                    then no filter was applied. Must be odd.
-            
-            ["bilateral", d_size, sig_intsty]
-                d_size: Diameter of each pixel neighborhood (must be 
-                    even). If zero, then no filter was applied.
-                sig_intsty: Filter sigma in the color space. A larger
-                    value means that farther colors within d_size will 
-                    be mixed together, resulting in larger areas of
-                    semi-equal color. 
-    
-    quiet_in: A boolean that determiens if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing.      
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` array containing the grayscale image to be blurred.
+        The array is copied internally to preserve the original input.
+    fltr_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_blur`. The
+        first entry selects the filter (``"average"``, ``"gaussian"``,
+        ``"median"`` or ``"bilateral"``); additional entries correspond
+        to the filter-specific kernel configuration as described in the
+        README section *Sonderfälle und Batch-Hinweise*.
+    quiet_in : bool, optional
+        Suppress status messages during batch execution. Defaults to
+        ``False``.
 
-    ---- RETURNED ---- 
-    [img_fltr]: Returns the resultant image after performing the
-        image processing procedures. img_fltr is in the same format as
-        img_in.
+    Returns
+    -------
+    numpy.ndarray
+        Blurred image with the same shape and dtype as ``img_in``.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output. 
+    Side Effects
+    ------------
+    Writes informational messages to ``stdout`` unless ``quiet_in`` is
+    ``True``.
+
+    Notes
+    -----
+    The OpenCV filter semantics are documented in
+    ``https://docs.opencv.org/4.2.0/d4/d13/tutorial_py_filtering.html``.
+    Eingabebilder mit invertierten Intensitäten sowie Batch-Workflows
+    sind in der ``imppy3d_functions``-README erläutert und gelten auch
+    für diese Funktion.
     """
 
     # ---- Start Local Copies ----
@@ -225,46 +195,35 @@ def apply_driver_blur(img_in, fltr_params_in, quiet_in=False):
 
 
 def interact_driver_sharpen(img_in, fltr_name_in):
-    """
-    Interactively implements a sharpen filter on the provided image. The
-    parameters for the image processing are controlled by trackbars in
-    the interactive window, and the resultant effects are updated in
-    real-time. Upon hitting the Enter or Esc keys, the interactive 
-    window closes, and then this function returns the final image. These
-    image processing operations can also be called edge enhancements.
-    This function is related to apply_driver_sharpen(...).
+    """Preview edge-enhancing filters interactively.
 
-    ---- INPUT ARGUMENTS ----
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image that serves as the preview source.
+        The data is consumed read-only by the interactive widgets.
+    fltr_name_in : str
+        Identifier of the sharpening filter (``"unsharp"``, ``"laplacian"``
+        or ``"canny"``). Comparison between the modes is case-insensitive.
 
-    fltr_name_in: A string that represents the name of the sharpen
-        filter to be applied. Can be either "unsharp", "laplacian", or
-        "canny", 
-            
-            "unsharp": Applies a conventional unsharp mask based on 
-                either a Gaussian or median kernel. See digital unsharp 
-                masking at, "https://en.wikipedia.org/wiki/
-                Unsharp_masking"
-            
-            "laplacian": Uses the Laplacian (i.e., second derivatives)
-                to enhance the image's edges.
-            
-            "canny": Uses the Canny edge detection algorithm to add
-                contrast to the edges. These enhancements may be 
-                somewhat discrete, rather than smooth gradients.
+    Returns
+    -------
+    numpy.ndarray
+        Sharpened image computed when the OpenCV window is closed via the
+        Enter or Escape key.
 
-    ---- RETURNED ---- 
-    [img_sharp]: Returns the final image after closing the interactive
-        session. img_sharp is in the same format as img_in.
+    Side Effects
+    ------------
+    Opens an OpenCV preview window with trackbars and writes status
+    information to ``stdout``.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    Die Parameter, die die Trackbars liefern, entsprechen exakt den
+    Eingaben für :func:`apply_driver_sharpen`. Ergänzende Hinweise zu
+    invertierten Grauwerten und Batch-Abläufen finden sich im Abschnitt
+    ``Sonderfälle und Batch-Hinweise`` der
+    ``imppy3d_functions``-README.
     """
 
     # ---- Start Local Copies ----
@@ -299,89 +258,38 @@ def interact_driver_sharpen(img_in, fltr_name_in):
 
 
 def apply_driver_sharpen(img_in, fltr_params_in, quiet_in=False):
-    """
-    Applies a sharpen filter, much like interact_driver_sharpen(...),
-    but in a non-interactive way. Note, sharpening is effectively the 
-    same as edge-enhancement.
+    """Apply edge-enhancing filters with predefined parameters.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image that will be sharpened. A copy is
+        created to prevent modifications to the original array.
+    fltr_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_sharpen`.
+        Depending on the first entry (``"unsharp"``, ``"laplacian"`` or
+        ``"canny"``) the remaining parameters encode kernel radii,
+        blending amounts and thresholds. Eine tabellarische Übersicht
+        findet sich in der README unter *Sonderfälle und Batch-Hinweise*.
+    quiet_in : bool, optional
+        Suppress status messages that describe the applied settings.
+        Defaults to ``False``.
 
-    [fltr_params_in]: A list of parameters needed to perform the sharpen
-        operation. The first parameter is a string, which determines
-        what type of sharpen filter to be applied, as well as the 
-        definitions of the remaining parameters. fltr_params_in[0] can
-        either be "unsharp", "laplacian", "canny. Example parameter 
-        lists are given below for each type,
-            
-            ["unsharp", cur_amount, k_size, fltr_type, std_dev]
-                cur_amount: A percentage value of how much to blend
-                    the sharpening effect onto the original value. It
-                    corresponds to (amount)*100 in the equation above.
-                    If zero, then no filter is applied.
-                k_size: Kernel size for the blur filter. If zero, 
-                    then no filter was applied. Must be odd.
-                fltr_type: Either 0 or 1. If 0, then the blurred image
-                    used in the procedure utilizes the Gaussian filter.
-                    If 1, then the median filter is used.
-                std_dev: Corresponds to the standard deviation used in
-                    defining the Gaussian kernel for the Gaussian
-                    filter. This parameter is ignored if the median
-                    filter is used. If std_dev < 0, then the standard
-                    deviation is automatically calculated.
-            
-            ["laplacian", cur_amount, blur_k_size, lap_k_size,  
-            fltr_type, blur_std_dev]
-                cur_amount: A percentage value of how much to blend
-                    the sharpening effect onto the original value. It
-                    corresponds to (amount)*100 in the equation above.
-                    If zero, then no filter is applied.
-                blur_k_size: Kernel size for the blur filter that is
-                    applied prior to using the Laplacian kernel. If 
-                    zero, then no blur filter is applied. Must be odd.
-                lap_k_size: Kernel size for the Laplacian kernel used
-                    to find the edges of the original image.
-                fltr_type: Either 0 or 1. If 0, then the blurred image
-                    used in the procedure utilizes the Gaussian filter.
-                    If 1, then the median filter is used.
-                blur_std_dev: Corresponds to the standard deviation used
-                    in defining the Gaussian kernel for the Gaussian
-                    blur. This parameter is ignored if the median blur
-                    is used. If std_dev < 0, then the standard deviation
-                    is automatically calculated.
-            
-            ["canny", k_size, cur_amount, thresh1, thresh2]
-                k_size: Kernel size for the Canny edge algorithm. If
-                    zero, then no filter was applied. Must be odd.
-                cur_amount: A percentage value of how much to blend
-                    the sharpening effect onto the original value. It
-                    corresponds to (amount)*100 in the equation above.
-                    If zero, then no filter is applied.
-                thresh1: Related to the hystersis thresholding algorithm
-                    in the Canny Edge Detection procedure. Related to 
-                    minimum threshold used to determine what an edge is.
-                thresh2: Related to the hystersis thresholding algorithm
-                    in the Canny Edge Detection procedure. Related to 
-                    maximum threshold used to determine what an edge is.
-    
-    quiet_in: A boolean that determiens if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing. 
+    Returns
+    -------
+    numpy.ndarray
+        Sharpened image with the same shape and dtype as ``img_in``.
 
-    ---- RETURNED ---- 
-    [img_sharp]: Returns the resultant image after performing the
-        image processing procedures. img_sharp is in the same format as
-        img_in.
+    Side Effects
+    ------------
+    Emits status messages via ``stdout`` unless ``quiet_in`` is ``True``.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    Sharpening entspricht einer gezielten Kantengewichtung. Hinweise zu
+    invertierten Grauwerten und den Auswirkungen auf Batch-Läufe sind im
+    Abschnitt ``Sonderfälle und Batch-Hinweise`` der
+    ``imppy3d_functions``-README gesammelt.
     """
 
     # ---- Start Local Copies ----
@@ -470,43 +378,34 @@ def apply_driver_sharpen(img_in, fltr_params_in, quiet_in=False):
 
 
 def interact_driver_equalize(img_in, eq_name_in):
-    """
-    Interactively equalizes the histogram on the provided image. The
-    parameters for the image processing are controlled by trackbars in
-    the interactive window, and the resultant effects are updated in
-    real-time. Upon hitting the Enter or Esc keys, the interactive 
-    window closes, and then this function returns the final image. These
-    image processing operations can also be called contrast enhancements.
-    This function is related to apply_driver_equalize(...). More details
-    about equalization can be found at, "https://docs.opencv.org/4.2.0/
-    d5/daf/tutorial_py_histogram_equalization.html"
+    """Preview histogram equalisation workflows interactively.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
-    
-    eq_name_in: A string that represents the type of equalization 
-        technique to use. Can be either "global" or "adaptive".
-            
-            "global": Warning, this is not interactive! Values are
-                automatically calculated and applied to the entire 
-                image.
-            
-            "adaptive": Locally adaptive procedure to enhance the
-                contrast. This particular process is known as Contrast
-                Limited Adaptive Histogram Equalization (CLAHE).
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image used as the live preview input.
+    eq_name_in : str
+        Equalisation strategy to evaluate (``"global"`` or ``"adaptive"``).
+        The value is interpreted case-insensitively.
 
-    ---- RETURNED ---- 
-    [img_eq]: Returns the final image after closing the interactive
-        session. img_eq is in the same format as img_in.
+    Returns
+    -------
+    numpy.ndarray
+        Equalised image corresponding to the parameters chosen in the
+        interactive session.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Side Effects
+    ------------
+    Opens OpenCV preview windows and writes user guidance to ``stdout``.
+
+    Notes
+    -----
+    ``"global"`` equalisation wendet unmittelbar den OpenCV-Standard an
+    und besitzt daher keine Trackbars. Für Hinweise zu invertierten
+    Grauwerten und Batch-Kontexten siehe Abschnitt ``Sonderfälle und
+    Batch-Hinweise`` der ``imppy3d_functions``-README. The underlying
+    algorithms are described in
+    ``https://docs.opencv.org/4.2.0/d5/daf/tutorial_py_histogram_equalization.html``.
     """
 
     # ---- Start Local Copies ----
@@ -538,52 +437,39 @@ def interact_driver_equalize(img_in, eq_name_in):
 
 
 def apply_driver_equalize(img_in, eq_params_in, quiet_in=False):
-    """
-    Equalizes the image's intensity histogram, much like 
-    interact_driver_equalize(...), but in a non-interactive way. Note,
-    equalizing the histogram is a method to enhance contrast. More 
-    details about equalization can be found at, "https://docs.opencv.org
-    /4.2.0/d5/daf/tutorial_py_histogram_equalization.html"
+    """Equalise image intensities using preset parameters.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel.
-    
-    [eq_params_in]: A list of parameters needed to perform the 
-        equalization operation. The first parameter is a string, which
-        determines what type of equalization to be applied, as well as
-        the  definitions of the remaining parameters. eq_params_in[0]
-        can either be "global" or "adaptive". Example parameter lists
-        are  given below for each type,
-            
-            ["global"]
-                No additional parameters required
-            
-            ["adaptive", clip_limit, grid_size]
-                clip_limit: Threshold for contrast limiting
-                grid_size: Size of grid for histogram equalization. 
-                    Input image will be divided into equally sized 
-                    rectangular tiles. tileGridSize defines the number 
-                    of tiles in row and column. If zero, the original
-                    image is returned.]
-    
-    quiet_in: A boolean that determiens if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image to be contrast-enhanced. A copy is
+        taken before processing.
+    eq_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_equalize`. The
+        first entry specifies the mode (``"global"`` or ``"adaptive"``),
+        followed by optional arguments such as ``clip_limit`` and
+        ``grid_size``. A structured summary is provided in der README im
+        Abschnitt *Sonderfälle und Batch-Hinweise*.
+    quiet_in : bool, optional
+        When ``True``, suppress informational print statements. Defaults
+        to ``False``.
 
-    ---- RETURNED ---- 
-    [img_eq]: Returns the resultant image after performing the
-        image processing procedures. img_eq is in the same format as
-        img_in.
+    Returns
+    -------
+    numpy.ndarray
+        Equalised image with the same shape and dtype as ``img_in``.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Side Effects
+    ------------
+    Emits status messages via ``stdout`` unless ``quiet_in`` disables
+    them.
+
+    Notes
+    -----
+    Equalisation algorithms follow the OpenCV implementations described
+    in ``https://docs.opencv.org/4.2.0/d5/daf/tutorial_py_histogram_equalization.html``.
+    Hinweise zu invertierten Segmentierungen und Batch-Pipelines sind im
+    README-Abschnitt ``Sonderfälle und Batch-Hinweise`` gebündelt.
     """
 
     # ---- Start Local Copies ----
@@ -623,36 +509,31 @@ def apply_driver_equalize(img_in, eq_params_in, quiet_in=False):
 
 
 def interact_driver_morph(img_in):
-    """
-    Creates an interactive session to perform various types of 
-    morphological transformations (i.e., dilation and erosion). The user
-    can either perform just dilation operations, or just erosion
-    transformations. Alternatively, the user can perform either an open
-    transformation or a close transformation. Note, an open
-    transformation is an erosion followed by a dilation, and it can be
-    helpful in removing noise. Conversely, a close transformation is a
-    dilation followed by an erosion, and it can be useful in closing
-    small holes. The user can update the various parameters and see the
-    effects in real-time within the interactive window. Upon hitting the
-    Enter or Esc keys, the interactive window closes, and then this 
-    function returns the final image. This function is closely related
-    to apply_driver_morph(...).
+    """Interactively explore morphological operations.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image that serves as the baseline for the
+        preview session.
 
-    ---- RETURNED ---- 
-    [img_morph]: Returns the final image after closing the interactive
-        session. img_morph is in the same format as img_in.
+    Returns
+    -------
+    numpy.ndarray
+        Morphologically transformed image reflecting the state at the
+        time the preview window is closed.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Side Effects
+    ------------
+    Opens OpenCV windows with trackbars and prints textual hints to the
+    console.
+
+    Notes
+    -----
+    Die verfügbaren Operationen (Erosion, Dilatation, Opening, Closing)
+    sind identisch zu :func:`apply_driver_morph`. Hinweise zu Batch- und
+    Invertierungs-Szenarien sind im Abschnitt ``Sonderfälle und
+    Batch-Hinweise`` der README aufgeführt.
     """
 
     [img_morph, morph_params] = ifun.interact_morph(img_in)
@@ -664,58 +545,40 @@ def interact_driver_morph(img_in):
 
 
 def apply_driver_morph(img_in, morph_params_in, quiet_in=False):
-    """
-    Applies a morphological operation (i.e., dilation and erosion
-    transformations), much like interact_driver_morph(...) but not in an
-    interactive way. The user can either perform just dilation
-    operations, or just erosion transformations. Alternatively, the user
-    can perform either an open transformation or a close transformation.
-    Note, an open transformation is an erosion followed by a dilation,
-    and it can be helpful in removing noise. Conversely, a close
-    transformation is a dilation followed by an erosion, and it can be
-    useful in closing small holes.
+    """Execute morphological filters with predefined settings.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` image expected to contain a binary mask.
+    morph_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_morph`. The
+        first entry selects the operation (0 = dilation, 1 = erosion,
+        2 = opening, 3 = closing), followed by structuring-element
+        metadata such as ``se_shape``, ``kernel_radius`` and optional
+        iteration counts. Eine Kurzreferenz befindet sich in der README
+        unter *Sonderfälle und Batch-Hinweise*.
+    quiet_in : bool, optional
+        When ``True`` suppress informational logging. Defaults to
+        ``False``.
 
-    [morph_params_in]: A list parameters needed to perform the desired
-        morphological transformations. A more detailed explanation of
-        each parameter in morph_params_in is given below,
-            
-            [flag_open_close, flag_rect_ellps, k_size, num_erode,
-            num_dilate]
-                flag_open_close: Either 0 or 1, and determines if the
-                    erosion operations should occur prior to dilation
-                    operations, or the other way around. If 0, then an 
-                    open operation is done, which is erosion followed by 
-                    dilation (removes noise). If 1, then a close 
-                    operation is done, which is a dilation followed by
-                    erosion (closes small holes). 
-                flag_rect_ellps: Either 0 or 1. If 0, then a rectangular
-                    kernel is used for the morphological operations. If
-                    1, then an elliptical kernel is used.
-                k_size: Kernel size for the morphological operations. If
-                    less than 1, then the original image is returned.
-                num_erode: Number of erosion operations to perform
-                num_dilate: Number of dilation operations to perform
-    
-    quiet_in: A boolean that determines if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing. 
+    Returns
+    -------
+    numpy.ndarray
+        Morphologically processed image with the same shape and dtype as
+        ``img_in``.
 
-    ---- RETURNED ---- 
-    [img_morph]: Returns the final image after the morphological 
-        transformations. img_morph is in the same format as img_in.
+    Side Effects
+    ------------
+    Prints status information to ``stdout`` unless ``quiet_in`` disables
+    the output.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    Morphologische Operatoren erwarten binäre Masken (0/255). Hinweise
+    auf Sonderfälle wie invertierte Masken oder aufeinanderfolgende
+    Batch-Läufe entnehmen Sie dem Abschnitt ``Sonderfälle und
+    Batch-Hinweise`` der README.
     """
 
     # ---- Start Local Copies ----
@@ -835,50 +698,32 @@ def apply_driver_morph(img_in, morph_params_in, quiet_in=False):
 
 
 def interact_driver_thresh(img_in, thsh_name_in):
-    """
-    Creates an interactive session to perform a black and white
-    threshold of a grayscale image. This is also known as binarization.
-    Both global and locally adaptive methods are supported. The final
-    image will be composed of just black and white intensities, which
-    correspond to 0 and 255, respectively. Upon hitting the Enter or Esc
-    keys, the interactive window closes, and then this  function returns
-    the final image. This function is closely related to
-    apply_driver_thresh(...).
+    """Interactively derive binarisation parameters.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
-    
-    thsh_name_in: A string that represents the name of the type of
-        thresholding operation to be performed. Supported methods are
-        "global", "adaptive_mean", and "adaptive_gaussian". Basic 
-        descriptions are given below, but for more details, visit
-        "https://docs.opencv.org/4.2.0/d7/d4d/tutorial_py_
-        thresholding.html"
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image to threshold.
+    thsh_name_in : str
+        Thresholding strategy (``"global"``, ``"adaptive_mean"`` or
+        ``"adaptive_gaussian"``). Comparison is case-insensitive.
 
-            "global": Uses the same threshold value (between 0 and 255)
-                for every pixel. The threshold can be set manually or 
-                automatically using Otsu's method.
+    Returns
+    -------
+    numpy.ndarray
+        Binary image produced when the interactive session is closed.
 
-            "adaptive_mean": A locally adaptive method. The threshold
-                value is the mean of the neighborhood area minus a
-                constant.
+    Side Effects
+    ------------
+    Opens OpenCV GUI elements and prints guidance to ``stdout``.
 
-            "adaptive_gaussian": A locally adaptive method. The threshold
-                value is a gaussian-weighted sum of the neighborhood area
-                minus a constant.
-
-    ---- RETURNED ---- 
-    [img_thsh]: Returns the final image after closing the interactive
-        session. img_thsh is in the same format as img_in.
-
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    ``"global"`` thresholding unterstützt sowohl manuelle Werte als auch
+    Otsu-Autodetektion. Hinweise zu invertierten Grauwerteingaben und
+    Batch-Verarbeitung finden sich im Abschnitt ``Sonderfälle und
+    Batch-Hinweise`` der README. The underlying algorithms are outlined
+    in ``https://docs.opencv.org/4.2.0/d7/d4d/tutorial_py_thresholding.html``.
     """
 
     # ---- Start Local Copies ----
@@ -911,62 +756,39 @@ def interact_driver_thresh(img_in, thsh_name_in):
 
 
 def apply_driver_thresh(img_in, thsh_params_in, quiet_in=False):
-    """
-    Perform a black and white threshold of a grayscale image. This is
-    also known as binarization. Both global and locally adaptive methods
-    are supported. The final image will be composed of just black and
-    white intensities, which correspond to 0 and 255, respectively. This
-    function is similar to interact_driver_thresh(...), but is
-    non-interactive.
+    """Apply binary thresholding using saved parameters.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image that will be binarised.
+    thsh_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_thresh`. The
+        first entry selects the strategy (``"global"``, ``"adaptive_mean"``
+        or ``"adaptive_gaussian"``), followed by the required thresholds
+        or window sizes. Eine Übersichtstabelle steht im README-Abschnitt
+        *Sonderfälle und Batch-Hinweise*.
+    quiet_in : bool, optional
+        Suppress informational output when ``True``. Defaults to
+        ``False``.
 
-    [thsh_params_in]: A list of parameters to perform the desired 
-        threshold operation. The first parameter is a string, which
-        determines what type of thresholding is performed, as well as
-        the definitions of the remaining parameters. thsh_params_in[0]
-        can be either "global", "adaptive_mean", or "adaptive_gaussian".
-        Example parameter lists are given below for each type,
+    Returns
+    -------
+    numpy.ndarray
+        Binary mask with values ``0`` and ``255`` matching the shape of
+        ``img_in``.
 
-            ["global", cur_thsh]
-                cur_thsh: The specified intensity to use as the 
-                    threshold limit between black and white. It should
-                    be an integer between 0 and 255. However, if
-                    cur_thsh < 0, then cur_thsh will be calculated
-                    automatically using Otsu's method.
+    Side Effects
+    ------------
+    Writes status information to ``stdout`` unless ``quiet_in`` disables
+    it.
 
-            ["adaptive_mean", blk_size, c_offset]
-                blk_size: Size of a pixel neighborhood that is used to
-                    calculate a threshold value for the current pixel.
-                    Must be odd, and if zero, no thresholding is done.
-                c_offset: A constant offset value applied to the mean
-                    or weighted mean of the intensities
-
-            ["adaptive_gaussian", blk_size, c_offset]
-                blk_size: Size of a pixel neighborhood that is used to
-                    calculate a threshold value for the current pixel.
-                    Must be odd, and if zero, no thresholding is done.
-                c_offset: A constant offset value applied to the mean
-                    or weighted mean of the intensities
-
-    quiet_in: A boolean that determiens if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing
-
-    ---- RETURNED ---- 
-    [img_thsh]: Returns the final image after thresholding. img_thsh is
-        in the same format as img_in.
-
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    Invertierte Eingabebilder sowie Batch-Verarbeitungen werden im
+    Abschnitt ``Sonderfälle und Batch-Hinweise`` der README erläutert.
+    Globale Thresholds können mit Otsu automatisch bestimmt werden; die
+    adaptive Variante erwartet ungerade Fenstergrößen.
     """
 
     # ---- Start Local Copies ----
@@ -1061,31 +883,29 @@ def apply_driver_thresh(img_in, thsh_params_in, quiet_in=False):
 
 
 def interact_driver_blob_fill(img_in):
-    """
-    Removes blobs (i.e., islands) of pixels from a binarized image in an
-    interactive sesssion. Blobs are identified based on user-selected
-    thresholding parameters related to the blob size (in pixels),
-    circularity, and aspect ratio. It is assumed that the blobs to be
-    removed are white, and thus, will be filled in with black pixels to
-    effectively delete them. Upon hitting Enter during the interactive
-    session, the interactive window closes and the final image is
-    returned. This function is related to apply_driver_blob_fill(...).
+    """Interactively tune blob removal on binary masks.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` image expected to contain values ``0`` and ``255``.
 
-    ---- RETURNED ---- 
-    [img_blob]: Returns the final image after closing the interactive
-        session. img_blob is in the same format as img_in.
+    Returns
+    -------
+    numpy.ndarray
+        Image with undesired blobs removed according to the selected
+        thresholds.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Side Effects
+    ------------
+    Opens OpenCV preview windows and prints status information.
+
+    Notes
+    -----
+    Die Parameter (Fläche, Rundheit, Aspektverhältnis) entsprechen den
+    Eingaben für :func:`apply_driver_blob_fill`. Hinweise zu invertierten
+    Masken und Batch-Verarbeitung finden sich im README-Abschnitt
+    ``Sonderfälle und Batch-Hinweise``.
     """
     [img_blob, blob_params] = ifun.interact_blob_fill(img_in)
 
@@ -1096,71 +916,35 @@ def interact_driver_blob_fill(img_in):
 
 
 def apply_driver_blob_fill(img_in, blob_params_in, quiet_in=False):
-    """
-    Removes blobs (i.e., islands) of pixels from a binarized image like
-    interact_driver_blob_fill(...), but as a batch process rather than in
-    an interactive session. Blobs are identified based on user-selected
-    thresholding parameters related to the blob size (in pixels),
-    circularity, and aspect ratio. 
+    """Remove labelled blobs based on geometric thresholds.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` binary image to clean.
+    blob_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_blob_fill`.
+        Encodes area bounds, circularity range, aspect-ratio range and
+        replacement colour ``(B, G, R)``. Details are tabulated in der
+        README unter *Sonderfälle und Batch-Hinweise*.
+    quiet_in : bool, optional
+        Suppress console output when ``True``. Defaults to ``False``.
 
-    [blob_params_in]: A list of threshold parameters necessary to 
-        identify blobs which should get filled in with a specified 
-        color. More details on the parameters of blob_params_in is given
-        below,
+    Returns
+    -------
+    numpy.ndarray
+        Cleaned binary image with the same shape and dtype as ``img_in``.
 
-        [area_thresh_min, area_thresh_max, circty_thresh_min,
-        circty_thresh_max, ar_min, ar_max, COLOR]
-                
-            area_thresh_min: Lower threshold bound for identifying blobs
-                to be deleted. Related to the blob size based on the
-                total number of pixels.
-                
-            area_thresh_max: Upper threshold bound for identifying blobs
-                to be deleted. Related to the blob size based on the
-                total number of pixels.
-                
-            circty_thresh_min: Lower threshold bound for identifying
-                blobs to be deleted. Related to the circularity of the
-                blob, based on, 4*pi*area/(perimeter)^2
-                
-            circty_thresh_max: Upper threshold bound for identifying
-                blobs to be deleted. Related to the circularity of the
-                blob, based on, 4*pi*area/(perimeter)^2
-                
-            ar_min: Lower threshold bound for identifying blobs to  be
-                deleted. Related to the aspect ratio, which is the width
-                over length of the bounding rectangle.
-                
-            ar_max: Upper threshold bound for identifying blobs to  be
-                deleted. Related to the aspect ratio, which is the width
-                over length of the bounding rectangle.
-                
-            COLOR: The color used to fill in the pixels of each blob.
-                Should be a tuple containing three integers, each
-                corresponding to the intensity of the color channels (in
-                BGR format). For example, (0, 0, 0) corresponds to
-                black.
+    Side Effects
+    ------------
+    Prints progress information to ``stdout`` unless ``quiet_in`` is set.
 
-    quiet_in: A boolean that determiens if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing
-
-    ---- RETURNED ---- 
-    [img_blob]: Returns the final image after filling-in the identified
-        blobs. img_blob is in the same format as img_in.
-
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    Die Funktion ersetzt erkannte Blobs durch den angegebenen Farbwert
+    und belässt die übrigen Pixel unverändert. Hinweise zu invertierten
+    Masken und Batch-Verarbeitung finden sich im README-Abschnitt
+    ``Sonderfälle und Batch-Hinweise``.
     """
     
     img = img_in.copy()
@@ -1251,34 +1035,30 @@ def apply_driver_blob_fill(img_in, blob_params_in, quiet_in=False):
 
 
 def interact_driver_denoise(img_in):
-    """
-    Create an interactive session that changes the parameters necessary
-    for the OpenCV's advanced non-local means denoising algorithm. The
-    user can change the procedure's parameters and get updates in real-
-    time. However, this denoising procedure is very computationally
-    expensive, so the window may stall for short periods of time with
-    large patch sizes. Compared to blur filters, like Gaussian blur,
-    this procedure usually does a better job at removing noise while
-    maintaining the integrity of the original signal. So, in a sense,
-    this procedure is edge preserving, or at least, edge friendly. Upon
-    hitting Enter, the interactive window closes, and the final image is
-    returned. This function is related to apply_driver_denoise(...).
+    """Interactively configure non-local means denoising.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image used as preview input.
 
-    ---- RETURNED ---- 
-    [img_denoise]: Returns the final image after closing the interactive
-        session. img_denoise is in the same format as img_in
+    Returns
+    -------
+    numpy.ndarray
+        Denoised image corresponding to the last slider configuration.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Side Effects
+    ------------
+    Opens OpenCV preview windows and prints runtime hints. Large window
+    sizes may momentarily block UI updates due to the expensive
+    computation.
+
+    Notes
+    -----
+    Die Trackbars steuern Filterstärke, Patch- und Suchfenstergröße und
+    entsprechen den Parametern von :func:`apply_driver_denoise`.
+    Sonderfälle (invertierte Grauwerte, Batch-Workflows) sind in der
+    README unter ``Sonderfälle und Batch-Hinweise`` beschrieben.
     """
 
     [img_denoise, denoise_params] = ifun.interact_denoise(img_in)
@@ -1290,55 +1070,35 @@ def interact_driver_denoise(img_in):
 
 
 def apply_driver_denoise(img_in, denoise_params_in, quiet_in=False):
-    """
-    Implements OpenCV's advanced non-local means denoising algorithm
-    like interact_driver_denoise(...), but as a batch process rather 
-    than being interactive. This procedure is rather computationally 
-    intensive, particularly for large patch sizes. However, Compared to
-    blur filters, like Gaussian blur, this procedure usually does a
-    better job at removing noise while maintaining the integrity of the
-    original signal. So, in a sense, this procedure is edge preserving,
-    or at least, edge friendly.
+    """Apply non-local means denoising with fixed parameters.
 
-    ---- INPUT ARGUMENTS ---- 
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
+    Parameters
+    ----------
+    img_in : numpy.ndarray
+        2-D ``uint8`` grayscale image to denoise.
+    denoise_params_in : Sequence
+        Parameter tuple emitted by :func:`interact_driver_denoise`.
+        Contains filter strength ``h``, patch size and search window size.
+        Weitere Details stehen im README-Abschnitt *Sonderfälle und
+        Batch-Hinweise*.
+    quiet_in : bool, optional
+        Suppress informational output when ``True``. Defaults to
+        ``False``.
 
-    [denoise_params_in]: A list of parameters for input to the non-local
-        means denoising algorithm. More details on the parameters of
-        denoise_params_in is given below,
-    
-            [cur_h, cur_tsize, cur_wsize]
-                
-                cur_h: Parameter regulating filter strength. Big cur_h
-                    value perfectly removes noise but also removes image
-                    details, smaller cur_h value preserves details but 
-                    also preserves some noise.
-                
-                cur_tsize: Size in pixels of the template patch that is
-                    used to compute weights. Should be odd.
-                
-                cur_wsize: Size in pixels of the window that is used to
-                    compute weighted average for given pixel. Should be
-                    odd. Affects performance linearly.
+    Returns
+    -------
+    numpy.ndarray
+        Denoised image with the same shape and dtype as ``img_in``.
 
-    quiet_in: A boolean that determiens if this function should print
-        any statements to standard output. If False (default), outputs  
-        are written. Conversely, if True, outputs are suppressed. This
-        is particularly useful in the event of batch processing
+    Side Effects
+    ------------
+    Prints status messages to ``stdout`` unless ``quiet_in`` is set.
 
-    ---- RETURNED ---- 
-    [img_denoise]: Returns the final image after applying the non-local
-        means denoising algorithm. img_denoise is in the same format as
-        img_in
-
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
-    hard drive. This function is a read-only function. It does pop-up
-    a new window that visualizes the provided image. Strings are printed
-    to standard output.
+    Notes
+    -----
+    Größere Suchfenster erhöhen die Laufzeit signifikant. Hinweise zu
+    invertierten Grauwerteingaben und Batch-Pipelines entnehmen Sie dem
+    README-Abschnitt ``Sonderfälle und Batch-Hinweise``.
     """
 
     img = img_in.copy()
