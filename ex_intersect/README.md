@@ -80,6 +80,23 @@ einen aktualisierten Summary-Eintrag über
 [`_append_summary_excel`](./line_grid_pipeline.py#L643). Die zugehörigen
 Docstrings werden in den jeweiligen Funktionen gepflegt.
 
+## Konfigurationsvorlagen (Task 5)
+
+Für wiederholbare Läufe stehen zwei kommentierte TOML-Dateien als Vorlage zur
+Verfügung:
+
+* [`count_intersects_line_grid.toml`](./count_intersects_line_grid.toml)
+  beschreibt einen Einzel-Lauf. Innerhalb der Abschnitte `[paths]`, `[pipeline]`
+  und `[save_options]` sind Platzhalter eingetragen, die den CLI-Defaults
+  entsprechen. Lege für konkrete Projekte eine Kopie dieser Datei an und trage
+  die passenden Pfade sowie Parameter ein.
+* [`batch_count_intersects_line_grid.toml`](./batch_count_intersects_line_grid.toml)
+  bündelt Batch-Auswertungen. Der Abschnitt `[batch]` definiert Ein- und
+  Ausgabeverzeichnisse (sowie optional `summary_excel`), während die Einträge in
+  `[pipeline]` und `[save_options]` als globale Standardwerte für alle Bilder
+  dienen. Für projektspezifische Sammlungen empfiehlt sich ebenfalls eine
+  separate Kopie mit angepassten Pfaden.
+
 ## Sonderfälle und weiterführende Docstrings
 
 * **Invertierte Masken** – Nutzen Sie das CLI-Flag `--borders-black`, wenn die

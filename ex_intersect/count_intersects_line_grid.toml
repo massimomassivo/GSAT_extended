@@ -1,16 +1,16 @@
-# Batch-Konfiguration für mehrere Segmentierungsbilder der Line-Grid-Auswertung.
-# Werte in [pipeline] und [save_options] dienen als globale Defaults für alle Bilder.
+# Beispielkonfiguration für einen einzelnen Lauf der Line-Grid-Auswertung.
+# Dupliziere diese Datei und passe die Werte auf dein Projekt an.
 
-[batch]
-input_dir = "path/to/segmented_images" # Ordner mit allen zu analysierenden Binärbildern.
-output_dir = "path/to/batch_results" # Zielordner, in dem Unterordner pro Bild angelegt werden.
-# summary_excel = "path/to/shared_summary.xlsx" # Optionales gemeinsames Excel-Logbuch für alle Batch-Läufe.
+[paths]
+input_image = "path/to/segmented_image.tif" # Binäres Segmentierungsbild, das ausgewertet werden soll.
+results_dir = "path/to/results_directory" # Basisordner, in dem alle Ergebnisdateien abgelegt werden.
+# summary_excel = "path/to/project_summary.xlsx" # Optionales gemeinsames Excel-Logbuch für mehrere Läufe.
 
 [pipeline]
 row_step = 20 # Pixelabstand zwischen den untersuchten Linien des Gitters.
 theta_start = 0.0 # Startwinkel (in Grad) für die Rotation des virtuellen Linealrasters.
 theta_end = 180.0 # Endwinkel (in Grad); wird bei Bedarf per inclusive_theta_end ausgewertet.
-n_theta_steps = 6 # Anzahl der gleichmäßig verteilten Rotationswinkel für jedes Bild.
+n_theta_steps = 6 # Anzahl der gleichmäßig verteilten Rotationswinkel.
 inclusive_theta_end = false # Endwinkel exakt einbeziehen (True) oder ausschließen (False).
 reskeletonize = true # Vor der Messung eine zusätzliche Skelettierung durchführen.
 scalebar_pixel = 464.0 # Länge der Skalierungsleiste im Bild (in Pixeln).
