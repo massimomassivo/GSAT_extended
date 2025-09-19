@@ -7,22 +7,26 @@ versions and now drives the behaviour of :func:`main`.
 
 from __future__ import annotations
 
-if __name__ == "__main__" and __package__ is None:  # pragma: no cover - IDE convenience
-    import sys
-    from pathlib import Path
-
-    project_root = Path(__file__).resolve().parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
-    __package__ = "ex_intersect"
-
+import sys
 from pathlib import Path
+
+# Ensure project root is on sys.path so absolute imports work even when file is executed directly or via PyCharm's docrunner
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 from typing import Optional, Tuple
 
 from matplotlib import pyplot as plt
 
-from . import line_grid_pipeline as pipeline
-from .config_loader import load_single_run_config
+try:
+    # Relative (package) imports – work when launched via `python -m ex_intersect.module`
+    from . import line_grid_pipeline as pipeline
+    from .config_loader import load_single_run_config
+except ImportError:
+    # Absolute fallback – works for "Run Current File" and PyCharm docrunner (which loads the file outside a package)
+    from ex_intersect import line_grid_pipeline as pipeline
+    from ex_intersect.config_loader import load_single_run_config
 
 MEDIUM_SIZE = 12
 BIGGER_SIZE = 14
