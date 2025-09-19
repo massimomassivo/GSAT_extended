@@ -7,13 +7,22 @@ versions and now drives the behaviour of :func:`main`.
 
 from __future__ import annotations
 
+if __name__ == "__main__" and __package__ is None:  # pragma: no cover - IDE convenience
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+    __package__ = "ex_intersect"
+
 from pathlib import Path
 from typing import Optional, Tuple
 
 from matplotlib import pyplot as plt
 
-from ex_intersect import line_grid_pipeline as pipeline
-from ex_intersect.config_loader import load_single_run_config
+from . import line_grid_pipeline as pipeline
+from .config_loader import load_single_run_config
 
 MEDIUM_SIZE = 12
 BIGGER_SIZE = 14
