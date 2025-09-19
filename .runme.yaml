@@ -1,0 +1,10 @@
+version: 1
+name: GSAT Intersect Workflow
+onProjectOpen: []
+tasks:
+  - name: Count intersects (single run)
+    description: "Verarbeitet das in count_intersects_line_grid.toml definierte Bild und legt Artefakte unter results_dir an."
+    command: python -m ex_intersect.count_intersects_line_grid
+  - name: Count intersects (batch run)
+    description: "Startet den Batch-Workflow basierend auf batch_count_intersects_line_grid.toml."
+    command: python -m ex_intersect.batch_count_intersects_line_grid

@@ -33,52 +33,75 @@ koordiniert, das sowohl in der CLI als auch in
 [`batch_count_intersects_line_grid.py`](./batch_count_intersects_line_grid.py)
 zum Einsatz kommt.
 
-## CLI `count_intersects_line_grid.py`
+## Schritt-für-Schritt: Konfiguration über TOML-Dateien
 
+Statt einer umfangreichen CLI befüllen Sie heute zwei kommentierte
+Konfigurationsdateien. So lassen sich Projekte reproduzierbar dokumentieren und
+im Team teilen.
+
+1. **Vorlage kopieren** – Erstellen Sie je Projekt eine Kopie von
+   [`count_intersects_line_grid.toml`](./count_intersects_line_grid.toml) bzw.
+   [`batch_count_intersects_line_grid.toml`](./batch_count_intersects_line_grid.toml).
+   Bewahren Sie die Originale als Referenz auf.
+2. **Eingaben definieren** – Öffnen Sie die Datei für Einzel-Läufe und setzen
+   in `[paths]` mindestens `input_image` (Pfad zum segmentierten Binärbild) und
+   `results_dir` (Zielordner für Artefakte). Optional weisen Sie
+   `summary_excel` einem bestehenden Sammel-Workbook zu.
+3. **Messraster einstellen** – Passen Sie im Abschnitt `[pipeline]` Parameter
+   wie `row_step`, `theta_start`, `theta_end`, `theta_steps` oder
+   `scalebar_pixel`/`scalebar_micrometer` an. Zuschnitte steuern Sie über die
+   Paare `crop_rows = [start, ende]` und `crop_cols = [start, ende]`. Setzen Sie
+   `borders_white = false`, falls Ihre Segmentierung dunkle Grenzen liefert.
+4. **Ausgabeoptionen wählen** – Legen Sie unter `[save_options]` fest, welche
+   Artefakte entstehen sollen. Typische Schalter sind `save_rotated_images`,
+   `save_boxplot`, `save_histograms`, `save_excel`, `append_summary` und
+   `show_plots`.
+5. **Batch-Konfiguration pflegen** – Für Serienläufe geben Sie in der Batch-
+   Vorlage unter `[batch]` die Verzeichnisse `input_dir`, `output_dir` und
+   optional `summary_excel` an. Globale Parameter passen Sie erneut über
+   `[pipeline]` an; einzelne Bilder können ihre eigenen Overrides erhalten, wenn
+   Sie in der Datei zusätzliche Tabellen wie `[images."sample.tif".pipeline]`
+   ergänzen.
+
+Alle Keys entsprechen den Feldern der Klassen
+[`LineGridConfig`](./line_grid_pipeline.py#L19) und
+[`SaveOptions`](./line_grid_pipeline.py#L102). Ungültige Werte werden beim
+Laden mit klaren Fehlermeldungen abgefangen.
+
+## Skripte ausführen und Ergebnisse verstehen
+
+Nachdem die TOML-Dateien angepasst sind, starten Sie die Pipeline direkt über
+die Python-Module:
+
+```bash
+python -m ex_intersect.count_intersects_line_grid
 ```
-python -m ex_intersect.count_intersects_line_grid <input_image> [OPTIONEN]
+
+Der Einzel-Lauf liest automatisch `count_intersects_line_grid.toml` aus demselben
+Ordner, verarbeitet das in `input_image` referenzierte Bild und legt sämtliche
+Artefakte unter `results_dir` ab. Erwartete Ergebnisse sind u. a. Excel-Dateien
+mit [`AngleStatistics`](./line_grid_pipeline.py#L68) und
+[`StatisticsResult`](./line_grid_pipeline.py#L86), Histogramme bzw. Boxplots
+gemäß `save_histograms` und `save_boxplot` sowie – bei aktivierter Option –
+Zwischenbilder für jede Rotation.
+
+Für Serienläufe verwenden Sie analog:
+
+```bash
+python -m ex_intersect.batch_count_intersects_line_grid
 ```
 
-| Flag | Bedeutung | Standardwert |
-| --- | --- | --- |
-| `input_image` | Pfad zum binären Segmentierungsbild. | – |
-| `--results-dir` | Basisverzeichnis für alle Ergebnisartefakte. | `path/to/results_directory` |
-| `--summary-excel` | Gemeinsame Arbeitsmappe für zusammengefasste Läufe. | automatisch `<results_dir>/summary.xlsx` |
-| `--row-step` | Abstand der analysierten Rasterzeilen. | `20` |
-| `--theta-start` / `--theta-end` | Start- bzw. Endwinkel der Grid-Rotation (Grad). | `0.0` / `180.0` |
-| `--theta-steps` | Anzahl der zu untersuchenden Drehwinkel. | `6` |
-| `--inclusive-theta-end` | Endwinkel explizit einschließen. | `False` |
-| `--scalebar-pixel` / `--scalebar-micrometer` | Pixel- bzw. Realmaßstab der Skala. | `464.0` / `50.0` |
-| `--crop-rows START END` | Zeilenbereich des auszuwertenden Ausschnitts. | `(0, 1825)` |
-| `--crop-cols START END` | Spaltenbereich des auszuwertenden Ausschnitts. | `(0, 2580)` |
-| `--borders-black` | Binärbild vor Verarbeitung invertieren. | Grenzen werden als weiß angenommen |
-| `--no-reskeletonize` | Vor Auswertung keine zusätzliche Skelettierung. | Reskeletonizing aktiv |
-| `--save-rotated-images` | Zwischenschritte für jede Rotation speichern. | deaktiviert |
-| `--no-boxplot` / `--no-histograms` | Grafikausgabe unterdrücken. | aktiviert |
-| `--no-excel` | Detaillierte Excel-Ausgabe überspringen. | aktiv |
-| `--no-summary` | Kein Append in die Summary-Arbeitsmappe. | aktiv |
-| `--show-plots` | Matplotlib-Fenster offen lassen. | geschlossen |
+Das Batch-Skript liest `batch_count_intersects_line_grid.toml`, iteriert über
+`batch.input_dir` und erstellt für jedes Bild eine eigene Ergebnisstruktur unter
+`batch.output_dir`. Sammelergebnisse werden – falls konfiguriert – in
+`batch.summary_excel` fortgeschrieben. Beide Befehle benötigen keine weiteren
+Argumente; sämtliche Einstellungen stammen aus den TOML-Dateien.
 
-## Anwendungsbeispiel
+[![Run in Runme](https://runme.dev/img/button.svg)](https://runme.dev/run?command=python%20-m%20ex_intersect.count_intersects_line_grid)
 
-Ein typisches Szenario ist die Bestimmung der mittleren Korngröße einer
-warmgewalzten Nickelbasis-Legierung. Nach der Segmentierung wird das binäre Bild
-`my_sample_segmented.tif` mit folgender Befehlszeile analysiert:
-
-```
-python -m ex_intersect.count_intersects_line_grid \
-    data/my_sample_segmented.tif \
-    --results-dir results/nickel_batch \
-    --scalebar-pixel 512 --scalebar-micrometer 50 \
-    --theta-steps 12 --inclusive-theta-end \
-    --crop-rows 100 1700 --crop-cols 150 2400
-```
-
-Die Pipeline erzeugt daraufhin eine Excel-Datei mit den
-[`AngleStatistics`](./line_grid_pipeline.py#L68), eine Histogramm-Grafik sowie
-einen aktualisierten Summary-Eintrag über
-[`_append_summary_excel`](./line_grid_pipeline.py#L643). Die zugehörigen
-Docstrings werden in den jeweiligen Funktionen gepflegt.
+> 💡 Nutzen Sie den Button, um die beigefügte `.runme.yaml` zu öffnen und den
+> Einzel-Lauf mit einem Klick auszuführen. Passen Sie zuvor die TOML-Dateien an
+> Ihre Daten an.
 
 ## Konfigurationsvorlagen (Task 5)
 
@@ -87,9 +110,9 @@ Verfügung:
 
 * [`count_intersects_line_grid.toml`](./count_intersects_line_grid.toml)
   beschreibt einen Einzel-Lauf. Innerhalb der Abschnitte `[paths]`, `[pipeline]`
-  und `[save_options]` sind Platzhalter eingetragen, die den CLI-Defaults
-  entsprechen. Lege für konkrete Projekte eine Kopie dieser Datei an und trage
-  die passenden Pfade sowie Parameter ein.
+  und `[save_options]` sind kommentierte Platzhalter eingetragen, die den
+  bisherigen CLI-Defaults entsprechen. Lege für konkrete Projekte eine Kopie
+  dieser Datei an und trage die passenden Pfade sowie Parameter ein.
 * [`batch_count_intersects_line_grid.toml`](./batch_count_intersects_line_grid.toml)
   bündelt Batch-Auswertungen. Der Abschnitt `[batch]` definiert Ein- und
   Ausgabeverzeichnisse (sowie optional `summary_excel`), während die Einträge in
@@ -99,7 +122,7 @@ Verfügung:
 
 ## Sonderfälle und weiterführende Docstrings
 
-* **Invertierte Masken** – Nutzen Sie das CLI-Flag `--borders-black`, wenn die
+* **Invertierte Masken** – Setzen Sie `borders_white = false`, wenn die
   Segmentierung dunkle Grenzen liefert. Details zur Schwellenwertbehandlung
   liefert [`apply_driver_thresh`](../imppy3d_functions/cv_driver_functions.py#L758).
 * **Restartefacts entfernen** – Vor der Intersectionsauswertung können kleine
