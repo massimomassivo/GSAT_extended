@@ -85,23 +85,18 @@ mit [`AngleStatistics`](./line_grid_pipeline.py#L68) und
 gemäß `save_histograms` und `save_boxplot` sowie – bei aktivierter Option –
 Zwischenbilder für jede Rotation.
 
-Für Serienläufe verwenden Sie analog:
+Starten Sie den Einzel-Lauf aus dem Projektstamm mit
+`python -m ex_intersect.count_intersects_line_grid`. Keine zusätzlichen Flags;
+alle Parameter werden aus `count_intersects_line_grid.toml` im selben
+Verzeichnis wie das Skript gelesen.
 
-```bash
-python -m ex_intersect.batch_count_intersects_line_grid
-```
-
-Das Batch-Skript liest `batch_count_intersects_line_grid.toml`, iteriert über
-`batch.input_dir` und erstellt für jedes Bild eine eigene Ergebnisstruktur unter
-`batch.output_dir`. Sammelergebnisse werden – falls konfiguriert – in
-`batch.summary_excel` fortgeschrieben. Beide Befehle benötigen keine weiteren
-Argumente; sämtliche Einstellungen stammen aus den TOML-Dateien.
-
-[![Run in Runme](https://runme.dev/img/button.svg)](https://runme.dev/run?command=python%20-m%20ex_intersect.count_intersects_line_grid)
-
-> 💡 Nutzen Sie den Button, um die beigefügte `.runme.yaml` zu öffnen und den
-> Einzel-Lauf mit einem Klick auszuführen. Passen Sie zuvor die TOML-Dateien an
-> Ihre Daten an.
+Für Serienläufe verwenden Sie analog `python -m
+ex_intersect.batch_count_intersects_line_grid`. Das Batch-Skript liest
+`batch_count_intersects_line_grid.toml`, iteriert über `batch.input_dir` und
+erstellt für jedes Bild eine eigene Ergebnisstruktur unter `batch.output_dir`.
+Sammelergebnisse werden – falls konfiguriert – in `batch.summary_excel`
+fortgeschrieben. Weitere Argumente sind nicht nötig; sämtliche Einstellungen
+stammen aus der TOML-Datei im Skriptverzeichnis.
 
 ## Konfigurationsvorlagen (Task 5)
 
