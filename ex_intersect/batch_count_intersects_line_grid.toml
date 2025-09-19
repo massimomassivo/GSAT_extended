@@ -1,0 +1,29 @@
+# Batch configuration for the line-grid intersection pipeline.
+#
+# Duplicate this file and adjust the paths to configure additional batch runs.
+# Provide absolute or project-relative paths so the script can locate the data.
+
+input_dir = "path/to/segmented_images"
+output_dir = "path/to/batch_results"
+# summary_excel = "path/to/shared_summary.xlsx"
+
+[pipeline]
+row_step = 20
+theta_start = 0.0
+theta_end = 180.0
+n_theta_steps = 6
+inclusive_theta_end = false
+reskeletonize = true
+scalebar_pixel = 464.0
+scalebar_micrometer = 50.0
+crop_rows = [0, 1825]
+crop_cols = [0, 2580]
+borders_white = true
+
+[save_options]
+save_rotated_images = false
+save_boxplot = true
+save_histograms = true
+save_excel = true
+append_summary = true
+show_plots = false
