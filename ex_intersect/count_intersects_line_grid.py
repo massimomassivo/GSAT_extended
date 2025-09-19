@@ -15,7 +15,14 @@ BIGGER_SIZE = 14
 
 
 def configure_plot_style() -> None:
-    """Apply a consistent Matplotlib style for generated figures."""
+    """Apply a consistent Matplotlib style for generated figures.
+
+    Examples
+    --------
+    >>> configure_plot_style()
+    >>> plt.rcParams['font.size'] == MEDIUM_SIZE
+    True
+    """
 
     plt.rc("font", size=MEDIUM_SIZE)
     plt.rc("axes", titlesize=BIGGER_SIZE)
@@ -29,7 +36,30 @@ def configure_plot_style() -> None:
 def build_config_from_user_inputs(
     args: Optional[Sequence[str]] = None,
 ) -> Tuple[pipeline.LineGridConfig, pipeline.SaveOptions]:
-    """Create a configuration and save options object from CLI parameters."""
+    """Create pipeline configuration objects from CLI parameters.
+
+    Parameters
+    ----------
+    args : Sequence[str] or None, optional
+        Custom argument vector to parse. ``None`` falls back to :data:`sys.argv`.
+
+    Returns
+    -------
+    tuple of (:class:`LineGridConfig`, :class:`SaveOptions`)
+        Configuration controlling the measurement pipeline and persistence options.
+
+    Raises
+    ------
+    SystemExit
+        Raised by :func:`argparse.ArgumentParser.parse_args` when invalid arguments
+        are supplied.
+
+    Examples
+    --------
+    >>> cfg, opts = build_config_from_user_inputs(["image.png", "--row-step", "10"])  # doctest: +SKIP
+    >>> cfg.row_step
+    10
+    """
 
     parser = argparse.ArgumentParser(
         description=(
@@ -207,7 +237,22 @@ def build_config_from_user_inputs(
 
 
 def main(args: Optional[Sequence[str]] = None) -> None:
-    """Parse user inputs, configure Matplotlib, and run the pipeline."""
+    """Parse user inputs, configure Matplotlib, and run the pipeline.
+
+    Parameters
+    ----------
+    args : Sequence[str] or None, optional
+        Optional argument vector forwarded to :func:`build_config_from_user_inputs`.
+
+    Raises
+    ------
+    SystemExit
+        Propagated from :func:`build_config_from_user_inputs` when parsing fails.
+
+    Examples
+    --------
+    >>> main(["tests/data/segmented.png"])  # doctest: +SKIP
+    """
 
     configure_plot_style()
     config, options = build_config_from_user_inputs(args)

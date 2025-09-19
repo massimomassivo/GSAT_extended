@@ -23,7 +23,19 @@ SUPPORTED_EXTENSIONS: Tuple[str, ...] = (".png", ".jpg", ".jpeg", ".tif", ".tiff
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Create the command line parser for the batch runner."""
+    """Create the command line parser for the batch runner.
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        Parser instance configured with all supported command line options.
+
+    Examples
+    --------
+    >>> parser = build_parser()
+    >>> any(action.dest == "input_dir" for action in parser._actions)
+    True
+    """
 
     parser = argparse.ArgumentParser(
         description=(
@@ -172,7 +184,25 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def find_image_files(input_dir: Path, extensions: Tuple[str, ...]) -> List[Path]:
-    """Return a sorted list of image files inside ``input_dir`` with given suffixes."""
+    """Return a sorted list of image files inside ``input_dir``.
+
+    Parameters
+    ----------
+    input_dir : Path
+        Directory that should be searched recursively.
+    extensions : tuple of str
+        File suffixes (including the leading dot) that should be considered.
+
+    Returns
+    -------
+    list of Path
+        Sorted collection of matching image paths.
+
+    Examples
+    --------
+    >>> find_image_files(Path("."), (".nonexistent",))
+    []
+    """
 
     files = [
         path
@@ -185,7 +215,30 @@ def find_image_files(input_dir: Path, extensions: Tuple[str, ...]) -> List[Path]
 def build_config_and_options(
     image_path: Path, args: argparse.Namespace, results_root: Path, summary_path: Path
 ) -> Tuple[pipeline.LineGridConfig, pipeline.SaveOptions]:
-    """Create configuration objects for the current image."""
+    """Create configuration objects for the current image.
+
+    Parameters
+    ----------
+    image_path : Path
+        Path to the segmented image that should be processed.
+    args : argparse.Namespace
+        Parsed command line arguments produced by :func:`build_parser`.
+    results_root : Path
+        Base directory where artefacts for this image should be stored.
+    summary_path : Path
+        Location of the shared summary workbook.
+
+    Returns
+    -------
+    tuple of (:class:`LineGridConfig`, :class:`SaveOptions`)
+        Configuration objects used by :func:`pipeline.process_image`.
+
+    Examples
+    --------
+    >>> parser = build_parser()
+    >>> ns = parser.parse_args(["--input-dir", ".", "--output-dir", ".", "image.png"])  # doctest: +SKIP
+    >>> config, options = build_config_and_options(Path("image.png"), ns, Path("."), Path("summary.xlsx"))  # doctest: +SKIP
+    """
 
     config = pipeline.LineGridConfig(
         file_in_path=image_path,
@@ -217,7 +270,23 @@ def build_config_and_options(
 
 
 def update_summary_aggregates(summary_path: Path) -> Optional[pd.DataFrame]:
-    """Recompute aggregate statistics for the summary workbook."""
+    """Recompute aggregate statistics for the summary workbook.
+
+    Parameters
+    ----------
+    summary_path : Path
+        Path to the Excel workbook that should receive aggregate statistics.
+
+    Returns
+    -------
+    pandas.DataFrame or None
+        DataFrame with aggregate metrics when successful, otherwise ``None``.
+
+    Examples
+    --------
+    >>> update_summary_aggregates(Path("nonexistent.xlsx")) is None
+    True
+    """
 
     if not summary_path.exists():
         return None
@@ -256,13 +325,42 @@ def update_summary_aggregates(summary_path: Path) -> Optional[pd.DataFrame]:
 
 
 def ensure_directory(path: Path) -> None:
-    """Create ``path`` if it does not already exist."""
+    """Create ``path`` if it does not already exist.
+
+    Parameters
+    ----------
+    path : Path
+        Directory that should be created if missing.
+
+    Examples
+    --------
+    >>> ensure_directory(Path("./_tmp_directory"))
+    >>> Path("./_tmp_directory").exists()
+    True
+    """
 
     path.mkdir(parents=True, exist_ok=True)
 
 
 def process_images(args: argparse.Namespace) -> None:
-    """Iterate over all images and execute the processing pipeline."""
+    """Iterate over all images and execute the processing pipeline.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed command line arguments produced by :func:`build_parser`.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the input directory does not exist.
+
+    Examples
+    --------
+    >>> parser = build_parser()
+    >>> ns = parser.parse_args(["--input-dir", ".", "--output-dir", "./out", "image.png"])  # doctest: +SKIP
+    >>> process_images(ns)  # doctest: +SKIP
+    """
 
     input_dir: Path = args.input_dir
     output_dir: Path = args.output_dir
@@ -343,7 +441,22 @@ def process_images(args: argparse.Namespace) -> None:
 
 
 def main(args: Optional[Sequence[str]] = None) -> None:
-    """Parse arguments, configure Matplotlib, and execute the batch run."""
+    """Parse arguments, configure Matplotlib, and execute the batch run.
+
+    Parameters
+    ----------
+    args : Sequence[str] or None, optional
+        Optional argument vector forwarded to :func:`build_parser`.
+
+    Raises
+    ------
+    SystemExit
+        Raised by :func:`argparse.ArgumentParser.parse_args` on invalid input.
+
+    Examples
+    --------
+    >>> main(["--input-dir", "./images", "--output-dir", "./results"])  # doctest: +SKIP
+    """
 
     parser = build_parser()
     parsed_args = parser.parse_args(args)
