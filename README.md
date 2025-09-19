@@ -12,6 +12,35 @@ The Grain Size Analysis Tools (GSAT) is a set of Python scripts that provides to
 
 The GSAT separates the process of measuring grain size into two steps: 1) the first step is to segment (or binarize) the selected microstructure image in order to isolate the grain boundaries, and 2) the second step is to calculate various statistics about the grain sizes of a segmented microstructure image using one of two types intercept patterns. Examples of scripts that demonstrate how to segment an image, either interactively or as a batch command, can be found in the examples folder, "ex_segmentation". Additionally, the "ex_intersect" folder contains examples of scripts that calculate grain sizes using different intercept patterns, which are described in more detail in [ASTM E112](https://www.astm.org/standards/e112).
 
+## Quick Start
+
+1. **Install dependencies**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. **Run an interactive segmentation example** to tune parameters for your imagery:
+   ```bash
+   python ex_segmentation/interactive_processing_single_image.py
+   ```
+3. **Process segmented data with intercept counting** using the provided batch scripts:
+   ```bash
+   python ex_intersect/line_grid_pipeline.py
+   ```
+
+Core helper utilities live in `imppy3d_functions/`; ensure the example scripts can resolve this directory (via the bundled `sys.path.insert` statements) if you relocate files.
+
+## Architecture Overview
+
+GSAT follows a modular workflow that mirrors the physical measurement procedure:
+
+1. **Segmentation** (`ex_segmentation`): raw grayscale micrographs are denoised, thresholded, and morphologically refined to produce binary masks of grain boundaries.
+2. **Intersect counting** (`ex_intersect`): intercept patterns are overlaid on the binary masks to enumerate lineal intercepts and record measurements for downstream analysis.
+3. **Evaluation and reporting** (`imppy3d_functions` and example notebooks/scripts): aggregated intercept statistics are converted into grain size metrics, saved as CSV files, and visualized for quality control.
+
+The data flows sequentially from segmentation outputs (binary images) into intersection counters (CSV intercept tallies and annotated images) before being summarized into grain size distributions and auxiliary reports. Intermediate artifacts are persisted between stages so that parameter tuning in earlier phases can be repeated without recomputing later analyses.
+
 ## Example of Segmentation and Grain Size Measurement
 
 An example of segmenting an image and measuring grain size using the GSAT is shown next; this example, and the scripts used to calculate the results, can also be found in the example folders: "ex_segmentation" and "ex_intersect". The image chosen for this example was taken using backscatter electrons (BSE) via a scanning electron microscope (SEM). The microstructure corresponds Ti-6Al-4V, which is an alpha-beta titanium alloy.
@@ -22,13 +51,26 @@ The provided example scripts in "ex_intersect" will save the overlaid intercept 
 
 ## Installation
 
-The GSAT is a Python library is dependent on existing libraries like Numpy, SciPy, and SciKit-Image. The list of specific dependencies, and how to install them in a Python environment, are described in the ReadMe file found in the "dependencies" folder. 
+The GSAT is a Python library is dependent on existing libraries like Numpy, SciPy, and SciKit-Image. The list of specific dependencies, and how to install them in a Python environment, are described in the ReadMe file found in the "dependencies" folder.
 
 There are also a number of custom Python modules that the GSAT also depends on which are located in the "imppy3d_functions" folder. At the top of each Python script, there is a line of code that adds a system path string to the system that points to the "imppy3d_functions" folder,
 
   `sys.path.insert(1, '../imppy3d_functions')`
 
 If the provided scripts are moved to a new directory relative to the "imppy3d_functions" folder, be sure to also update this path variable to the new relative location of the "imppy3d_functions" folder.
+
+## Docstring-Konventionen
+
+All new and updated functions should include [NumPy-style docstrings](https://numpydoc.readthedocs.io/en/latest/format.html), organizing information under the standard sections:
+
+- `Parameters`: list every argument with types and concise descriptions.
+- `Returns`: describe the returned values and their shapes or units.
+- `Raises`: specify the exceptions that may be propagated.
+- `Examples` (optional): provide runnable usage snippets when additional clarity is needed.
+
+## README und Docstrings
+
+Verwende das README für den Überblick über den Gesamtworkflow, zentrale Skripte und typische Einstiegspunkte. Detailfragen zu einzelnen Funktionen, Eingabeparametern und Fehlerfällen werden in den zugehörigen Docstrings beantwortet. So ergänzt sich die Dokumentation: Das README führt durch die großen Schritte (Segmentierung → Intersect-Zählung → Auswertung), während die Docstrings die konkrete Implementierung erläutern.
 
 ## Support
 If you encounter any bugs or unintended behavior, please create an "Issue" and report a bug. You can also make a request for new features in this way. 
