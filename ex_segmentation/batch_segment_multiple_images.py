@@ -14,7 +14,6 @@ setups.
 from __future__ import annotations
 
 import logging
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence
@@ -26,14 +25,9 @@ from skimage.util import img_as_bool, img_as_float, img_as_ubyte
 from skimage.util import invert as ski_invert
 
 
-# Ensure local modules can be imported when the script is executed directly.
-REPO_ROOT = Path(__file__).resolve().parents[1]
-IMPPY_MODULE_PATH = REPO_ROOT / "C:\_Development\Github\GSAT_native\imppy3d_functions"
-if str(IMPPY_MODULE_PATH) not in sys.path:
-    sys.path.insert(0, str(IMPPY_MODULE_PATH))
-
-import import_export as imex  # noqa: E402  (local import after path setup)
-import ski_driver_functions as sdrv  # noqa: E402
+# Import local modules
+from imppy3d_functions import import_export as imex
+from imppy3d_functions import ski_driver_functions as sdrv
 
 
 ALLOWED_EXTENSIONS = {
