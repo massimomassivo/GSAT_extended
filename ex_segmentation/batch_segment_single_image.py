@@ -12,8 +12,10 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import TextBox, Slider, Button, CheckButtons
 
 # Import local modules
-# Ensure this is the correct path to the functions folder
-#sys.path.insert(1, r"C:\_Development\Github\GSAT_native")
+if __package__ in {None, ""}:
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
 from imppy3d_functions import import_export as imex
 from imppy3d_functions import plt_wrappers as pwrap
 from imppy3d_functions import ski_driver_functions as sdrv
