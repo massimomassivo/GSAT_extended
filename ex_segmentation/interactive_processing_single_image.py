@@ -15,7 +15,6 @@ invert_grayscales : bool, default=True
 """
 
 # Import external dependencies
-import sys
 import numpy as np
 import cv2 as cv
 import skimage.feature as feature
@@ -27,12 +26,10 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import TextBox, Slider, Button, CheckButtons, RadioButtons
 
 # Import local modules
-# Ensure this is the correct path to the functions folder
-sys.path.insert(1, '../imppy3d_functions')
-import import_export as imex
-import plt_wrappers as pwrap
-import ski_driver_functions as sdrv
-import cv_processing_wrappers as cwrap
+from imppy3d_functions import import_export as imex
+from imppy3d_functions import plt_wrappers as pwrap
+from imppy3d_functions import ski_driver_functions as sdrv
+from imppy3d_functions import cv_processing_wrappers as cwrap
 
 # Set constants related to plotting (for MatPlotLib)
 SMALL_SIZE = 10
