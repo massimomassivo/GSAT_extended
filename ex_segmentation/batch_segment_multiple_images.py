@@ -73,6 +73,8 @@ class PipelineParameters:
         Smallest connected component (in pixels) that should be kept.
     invert_grayscale : bool
         Toggle grayscale inversion before segmentation.
+    skeletonize_output : bool
+        Apply morphological skeletonisation to the final binary mask.
     """
 
     denoise: Sequence[object]
@@ -82,6 +84,7 @@ class PipelineParameters:
     max_hole_size: int
     min_feature_size: int
     invert_grayscale: bool
+    skeletonize_output: bool
 
 
 @dataclass
@@ -136,6 +139,9 @@ class ManualConfiguration:
         Maximum hole size (pixels) filled during cleanup.
     min_feature_size : int, default=30
         Minimum feature size (pixels) retained during cleanup.
+    apply_skeletonize : bool, default=False
+        Apply morphological skeletonisation to the final binary image when set
+        to ``True``.
     """
 
     input_dir: str = (
@@ -145,6 +151,7 @@ class ManualConfiguration:
         r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images"
     )
     invert_grayscale: bool = True
+    apply_skeletonize: bool = False
     log_level: str = "INFO"
     denoise_method: str = "nl_means"
     h_factor: float = 0.04
@@ -163,7 +170,7 @@ class ManualConfiguration:
     morph_radius: int = 1
     max_hole_size: int = 9
     min_feature_size: int = 30
-
+    
 
 MANUAL_CONFIGURATION = ManualConfiguration()
 
@@ -204,6 +211,7 @@ DEFAULT_PIPELINE = PipelineParameters(
     max_hole_size=4,
     min_feature_size=64,
     invert_grayscale=False,
+    skeletonize_output=False,
 )
 
 
@@ -302,6 +310,7 @@ def build_manual_configuration(
         max_hole_size=execution.max_hole_size,
         min_feature_size=execution.min_feature_size,
         invert_grayscale=execution.invert_grayscale,
+        skeletonize_output=bool(manual.apply_skeletonize),
     )
 
     return execution, pipeline
@@ -409,6 +418,7 @@ def build_pipeline(
         max_hole_size=execution.max_hole_size,
         min_feature_size=execution.min_feature_size,
         invert_grayscale=execution.invert_grayscale,
+        skeletonize_output=template.skeletonize_output,
     )
 
 
@@ -491,6 +501,10 @@ def segment_image(image: np.ndarray, params: PipelineParameters) -> np.ndarray:
     working_bool = morph.remove_small_objects(
         working_bool, min_size=int(params.min_feature_size), connectivity=1
     )
+
+    if params.skeletonize_output:
+        logging.debug("Applying skeletonisation to the final mask.")
+        working_bool = morph.skeletonize(working_bool)
 
     return img_as_ubyte(working_bool)
 

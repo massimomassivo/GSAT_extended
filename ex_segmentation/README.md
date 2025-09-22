@@ -70,6 +70,7 @@ verarbeitet wird.
 | `max_hole_size` | Maximale Größe zu füllender Löcher | `4` | [`PipelineParameters`](./batch_segment_multiple_images.py) |
 | `min_feature_size` | Kleinste zu erhaltende Komponenten | `64` | [`PipelineParameters`](./batch_segment_multiple_images.py) |
 | `invert_grayscale` | Eingangsbild invertieren, falls Grenzen dunkel sind | `False` | [`PipelineParameters`](./batch_segment_multiple_images.py) |
+| `skeletonize_output` / `apply_skeletonize` | Wendet eine abschließende Skelettierung auf die Binärmaske an | `False` | [`segment_image`](./batch_segment_multiple_images.py), [`build_manual_configuration`](./batch_segment_multiple_images.py) |
 
 Weitere Parameter (z. B. Plot-/Logging-Einstellungen) werden in den jeweiligen
 Skripten dokumentiert und künftig über Docstrings gepflegt.
