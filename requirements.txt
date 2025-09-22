@@ -6,6 +6,7 @@ scipy
 matplotlib
 opencv-python
 scikit-image
+PyWavelets
 
 # Data handling utilities
 pandas
