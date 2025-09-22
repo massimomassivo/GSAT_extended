@@ -13,11 +13,11 @@ from matplotlib.widgets import TextBox, Slider, Button, CheckButtons
 
 # Import local modules
 # Ensure this is the correct path to the functions folder
-sys.path.insert(1, '../imppy3d_functions')
-import import_export as imex
-import plt_wrappers as pwrap
-import ski_driver_functions as sdrv
-import cv_processing_wrappers as cwrap
+#sys.path.insert(1, r"C:\_Development\Github\GSAT_native")
+from imppy3d_functions import import_export as imex
+from imppy3d_functions import plt_wrappers as pwrap
+from imppy3d_functions import ski_driver_functions as sdrv
+from imppy3d_functions import cv_processing_wrappers as cwrap
 
 # Set constants related to plotting (for MatPlotLib)
 SMALL_SIZE = 10
@@ -38,7 +38,7 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # Fontsize of the figure title
 # Provide the filepath to the image that should be imported and segmented.
 # Imported images will be converted to grayscale as UINT8 (i.e., max
 # grayscale intensities of 255).
-file_in_path = "path/to/image.tif"
+file_in_path = r"C:\_Development\Github\GSAT_native\images\OM_native_images\M-34524 - 2503i11792.jpg"
 
 # The resultant segmentation will be saved with the same filename as the 
 # input image, but with "_segmented" appended to the name. For example, 
