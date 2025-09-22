@@ -14,6 +14,7 @@ setups.
 from __future__ import annotations
 
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence
@@ -26,6 +27,10 @@ from skimage.util import invert as ski_invert
 
 
 # Import local modules
+if __package__ in {None, ""}:
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
 from imppy3d_functions import import_export as imex
 from imppy3d_functions import ski_driver_functions as sdrv
 
