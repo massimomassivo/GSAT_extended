@@ -665,5 +665,18 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
+def _should_execute_main() -> bool:
+    """Determine whether :func:`main` should run for the current invocation."""
+
+    if __name__ == "__main__":
+        return True
+
+    if not sys.argv:
+        return False
+
+    launcher = Path(sys.argv[0]).stem.lower()
+    return any(keyword in launcher for keyword in ("pycharm_runner", "pytest"))
+
+
+if _should_execute_main():
     raise SystemExit(main())
