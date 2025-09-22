@@ -145,13 +145,13 @@ class ManualConfiguration:
     """
 
     input_dir: str = (
-        r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images"
+        r"C:\_Development\Github\GSAT_native\images\OM_native_images"
     )
     output_dir: str = (
-        r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images"
+        r"C:\_Development\Github\GSAT_native\images\OM_binarised_images"
     )
     invert_grayscale: bool = True
-    apply_skeletonize: bool = False
+    apply_skeletonize: bool = True
     log_level: str = "INFO"
     denoise_method: str = "nl_means"
     h_factor: float = 0.04
