@@ -28,7 +28,7 @@ from skimage.util import invert as ski_invert
 
 # Ensure local modules can be imported when the script is executed directly.
 REPO_ROOT = Path(__file__).resolve().parents[1]
-IMPPY_MODULE_PATH = REPO_ROOT / "imppy3d_functions"
+IMPPY_MODULE_PATH = REPO_ROOT / "C:\_Development\Github\GSAT_native\imppy3d_functions"
 if str(IMPPY_MODULE_PATH) not in sys.path:
     sys.path.insert(0, str(IMPPY_MODULE_PATH))
 
