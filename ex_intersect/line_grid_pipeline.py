@@ -124,6 +124,17 @@ class AngleStatistics:
     median_inverse: float
     thickness_from_average: float
     thickness_from_median: float
+    astm_g: float
+
+
+def astm_g_from_lbar_um(lbar_um: float) -> float:
+    import numpy as np
+
+    if not np.isfinite(lbar_um) or lbar_um <= 0:
+        return float("nan")
+    l_mm = lbar_um / 1000.0
+    g = (-6.643856 * np.log10(l_mm)) - 3.288
+    return float(np.round(g, 1))
 
 
 @dataclass
@@ -216,6 +227,7 @@ def _print_angle_statistics(stat: "AngleStatistics") -> None:
     print(
         f"  Thickness from Median Inverse Grain Size (µm): {stat.thickness_from_median:.2f}"
     )
+    print(f"  ASTM G (from l̄): {stat.astm_g:.1f}")
 
 
 def print_statistics(statistics: "StatisticsResult") -> None:
@@ -241,6 +253,7 @@ def print_statistics(statistics: "StatisticsResult") -> None:
     ...         median_inverse=float("nan"),
     ...         thickness_from_average=float("nan"),
     ...         thickness_from_median=float("nan"),
+    ...         astm_g=float("nan"),
     ...     ),
     ...     results_table=pd.DataFrame(),
     ...     distances_df=pd.DataFrame(),
@@ -460,6 +473,7 @@ def aggregate_statistics(
         "Total Number of Grain Segments",
         "Summed Length of Grain Segments (µm)",
         "Average Grain Size (µm)",
+        "ASTM G (from l̄)",
         "Median Grain Size (µm)",
         "Std. Deviation in Grain Size (µm)",
         "Thickness (Average inverse Grain Size) (µm)",
@@ -480,6 +494,7 @@ def aggregate_statistics(
             stats.segment_count,
             stats.total_length,
             stats.average_length,
+            stats.astm_g,
             stats.median_length,
             stats.std_dev,
             stats.thickness_from_average,
@@ -499,6 +514,7 @@ def aggregate_statistics(
         overall_stats.segment_count,
         overall_stats.total_length,
         overall_stats.average_length,
+        overall_stats.astm_g,
         overall_stats.median_length,
         overall_stats.std_dev,
         overall_stats.thickness_from_average,
@@ -516,6 +532,7 @@ def aggregate_statistics(
             {
                 "Filename": config.file_in_path.name,
                 "Avg Grain Size (µm)": overall_stats.average_length,
+                "ASTM G (from l̄)": overall_stats.astm_g,
                 "Med. Grain Size (µm)": overall_stats.median_length,
                 "Thickness (Avg inv. gs) (µm)": overall_stats.thickness_from_average,
                 "Thickness (Med. inv. gs) (µm)": overall_stats.thickness_from_median,
@@ -674,6 +691,7 @@ def _compute_angle_statistics(
             median_inverse=float("nan"),
             thickness_from_average=float("nan"),
             thickness_from_median=float("nan"),
+            astm_g=float("nan"),
         )
 
     total_length = float(np.sum(distances))
@@ -685,6 +703,7 @@ def _compute_angle_statistics(
 
     thickness_avg = float(1.0 / (1.5 * average_inverse)) if average_inverse > 0 else float("nan")
     thickness_med = float(1.0 / (1.5 * median_inverse)) if median_inverse > 0 else float("nan")
+    astm_g = astm_g_from_lbar_um(average_length)
 
     return AngleStatistics(
         angle_label=angle_label,
@@ -697,6 +716,7 @@ def _compute_angle_statistics(
         median_inverse=median_inverse,
         thickness_from_average=thickness_avg,
         thickness_from_median=thickness_med,
+        astm_g=astm_g,
     )
 
 
