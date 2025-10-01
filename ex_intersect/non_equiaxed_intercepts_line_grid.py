@@ -20,6 +20,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 # --- End import shim ---
 
 import traceback
+from collections import defaultdict
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -126,6 +127,61 @@ class PlaneProcessingResult:
     per_image_records: List[PerImageRecord]
     pooled_distances: np.ndarray
     pooled_inverse_distances: np.ndarray
+    angle_average_lengths: Dict[float, Tuple[float, ...]]
+
+
+def _mean_finite(values: Iterable[float]) -> Optional[float]:
+    """Return the mean of all finite entries in ``values`` or ``None`` if absent."""
+
+    array = np.asarray(list(values), dtype=float)
+    if array.size == 0:
+        return None
+    finite = array[np.isfinite(array)]
+    if finite.size == 0:
+        return None
+    return float(np.mean(finite))
+
+
+def _get_angle_values(
+    angle_map: Mapping[float, Sequence[float]], target: float, *, tol: float = 1e-6
+) -> Sequence[float]:
+    """Fetch angle entries matching ``target`` within ``tol`` degrees."""
+
+    for angle, values in angle_map.items():
+        if abs(angle - target) <= tol:
+            return values
+    return ()
+
+
+def _compute_anisotropy_index_for_longitudinal(
+    plane_result: PlaneProcessingResult,
+) -> Tuple[float, str, Optional[str]]:
+    """Derive the anisotropy index for the longitudinal plane."""
+
+    source_label = "L-plane: 180° / 90°"
+    angle_map = plane_result.angle_average_lengths
+
+    zero_like_values = _get_angle_values(angle_map, 180.0)
+    if not zero_like_values:
+        zero_like_values = _get_angle_values(angle_map, 0.0)
+    mean_0 = _mean_finite(zero_like_values)
+    mean_90 = _mean_finite(_get_angle_values(angle_map, 90.0))
+
+    if mean_0 is None or mean_90 is None:
+        return (
+            float("nan"),
+            source_label,
+            "Insufficient data for anisotropy index (missing 180°/0° or 90° averages).",
+        )
+    if not np.isfinite(mean_90) or abs(mean_90) < 1e-12:
+        return (
+            float("nan"),
+            source_label,
+            "Invalid 90° mean intercept length for anisotropy index computation.",
+        )
+
+    anisotropy = float(mean_0 / mean_90)
+    return anisotropy, source_label, None
 
 
 FORCED_THETA_VALUES: Tuple[float, ...] = (
@@ -220,6 +276,8 @@ def _initialise_sample_summary_row(sample_id: str, build_dir_long_deg: int) -> D
         "rel_accuracy_pct": float("nan"),
         "ASTM_G_rand": float("nan"),
         "weights_note": "L weighted 2x (l,p), T weighted 1x (t)",
+        "anisotropy_index": float("nan"),
+        "anisotropy_from": "",
     }
 
 
@@ -483,6 +541,7 @@ def _process_plane(
     records: List[PerImageRecord] = []
     pooled_distances: List[np.ndarray] = []
     pooled_inverse: List[np.ndarray] = []
+    angle_length_map: Dict[float, List[float]] = defaultdict(list)
 
     for index, image_path in enumerate(images, start=1):
         print(f"[INFO] ({plane.label}) Processing {image_path} ({index}/{len(images)})")
@@ -534,6 +593,15 @@ def _process_plane(
             statistics.inverse_distances_df.get("Inverse Distances (1/µm)", pd.Series(dtype=float)).to_numpy(dtype=float).ravel()
         )
 
+        for angle_stat in statistics.angle_statistics:
+            try:
+                angle_value = float(angle_stat.angle_label)
+            except (TypeError, ValueError):
+                continue
+            if not np.isfinite(angle_stat.average_length):
+                continue
+            angle_length_map.setdefault(angle_value, []).append(float(angle_stat.average_length))
+
     if failures:
         print(f"[SUMMARY] ({plane.label}) Completed with {processed} success(es) and {len(failures)} failure(s).")
     else:
@@ -554,6 +622,9 @@ def _process_plane(
         per_image_records=records,
         pooled_distances=pooled_distance_array,
         pooled_inverse_distances=pooled_inverse_array,
+        angle_average_lengths={
+            angle: tuple(lengths) for angle, lengths in angle_length_map.items()
+        },
     )
 
 
@@ -731,6 +802,8 @@ def main(config_path: Optional[Path] = None) -> None:
             "rel_accuracy_pct",
             "ASTM_G_rand",
             "weights_note",
+            "anisotropy_index",
+            "anisotropy_from",
         ]
 
         sample_summary_warning: Optional[str] = None
@@ -823,6 +896,22 @@ def main(config_path: Optional[Path] = None) -> None:
                 f"{sample_summary_warning}."
             )
 
+        anisotropy_value = float("nan")
+        anisotropy_source = ""
+        anisotropy_warning: Optional[str] = None
+        if "L" in plane_results:
+            anisotropy_value, anisotropy_source, anisotropy_warning = (
+                _compute_anisotropy_index_for_longitudinal(plane_results["L"])
+            )
+        else:
+            anisotropy_warning = (
+                "Longitudinal plane results unavailable; anisotropy index not computed."
+            )
+
+        sample_summary_row["anisotropy_index"] = anisotropy_value
+        if anisotropy_source:
+            sample_summary_row["anisotropy_from"] = anisotropy_source
+
         sample_summary_df = pd.DataFrame([sample_summary_row], columns=sample_summary_columns)
 
         master_excel_name = config.master_excel_name
@@ -854,6 +943,12 @@ def main(config_path: Optional[Path] = None) -> None:
         )
         if sample_summary_report:
             print(sample_summary_report)
+        anisotropy_display = (
+            f"{anisotropy_value:.2f}" if np.isfinite(anisotropy_value) else "nan"
+        )
+        print(f"[SUMMARY] Anisotropieindex (L, 180° / 90°): {anisotropy_display}")
+        if anisotropy_warning:
+            print(f"[WARNING] {anisotropy_warning}")
     else:
         print("[SUMMARY] No per-image statistics were recorded; master tables were not created.")
 
