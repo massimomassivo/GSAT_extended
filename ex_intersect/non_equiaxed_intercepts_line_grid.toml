@@ -3,11 +3,11 @@
 
 [paths]
 # Ordner mit Längsschliff-Bildern (Longitudinal / "L").
-longitudinal_dir = "C:/path/to/L_images"
+longitudinal_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Längsschliff"
 # Ordner mit Querschliff-Bildern (Transversal / "T").
-transverse_dir = "C:/path/to/T_images"
+transverse_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Querschliff"
 # Wurzelverzeichnis, in dem Unterordner "L" und "T" für die Ergebnisse angelegt werden.
-output_dir = "C:/path/to/out_non_equiaxed"
+output_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Ergebnisse"
 # Optional: Liste zulässiger Dateimuster. Wird der Eintrag weggelassen, greifen die Standardendungen.
 file_globs = ["*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff", "*.bmp"]
 

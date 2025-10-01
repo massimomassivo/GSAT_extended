@@ -2,27 +2,27 @@
 # Werte in [pipeline] und [save_options] dienen als globale Defaults für alle Bilder.
 
 [batch]
-input_dir = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/binarised_images" # Ordner mit allen zu analysierenden Binärbildern.
-output_dir = "C:/Users/maxbe/PycharmProjects/GSAT_native/images/results" # Zielordner, in dem Unterordner pro Bild angelegt werden.
+input_dir = "C:/_Development/Github/GSAT_native/images/Kachelbilder_binarised" # Ordner mit allen zu analysierenden Binärbildern.
+output_dir = "C:/_Development/Github/GSAT_native/images/Kachelbilder_results" # Zielordner, in dem Unterordner pro Bild angelegt werden.
 # summary_excel = "path/to/shared_summary.xlsx" # Optionales gemeinsames Excel-Logbuch für alle Batch-Läufe.
 
 [pipeline]
 row_step = 20 # Pixelabstand zwischen den untersuchten Linien des Gitters.
-theta_start = 0.0 # Startwinkel (in Grad) für die Rotation des virtuellen Linealrasters.
+theta_start = 30.0 # Startwinkel (in Grad) für die Rotation des virtuellen Linealrasters.
 theta_end = 180.0 # Endwinkel (in Grad); wird bei Bedarf per inclusive_theta_end ausgewertet.
 n_theta_steps = 6 # Anzahl der gleichmäßig verteilten Rotationswinkel für jedes Bild.
-inclusive_theta_end = false # Endwinkel exakt einbeziehen (True) oder ausschließen (False).
+inclusive_theta_end = true # Endwinkel exakt einbeziehen (True) oder ausschließen (False).
 reskeletonize = true # Vor der Messung eine zusätzliche Skelettierung durchführen.
-scalebar_pixel = 464.0 # Länge der Skalierungsleiste im Bild (in Pixeln).
-scalebar_micrometer = 50.0 # Reale Länge der Skalierungsleiste (in Mikrometern).
-crop_rows = [0, 1825] # Zeilenbereich [Start, Ende] des relevanten Bildausschnitts.
-crop_cols = [0, 2580] # Spaltenbereich [Start, Ende] des relevanten Bildausschnitts.
+scalebar_pixel = 555.0 # Länge der Skalierungsleiste im Bild (in Pixeln).
+scalebar_micrometer = 100.0 # Reale Länge der Skalierungsleiste (in Mikrometern).
+crop_rows = [0, 1530] # Zeilenbereich [Start, Ende] des relevanten Bildausschnitts.
+crop_cols = [0, 2040] # Spaltenbereich [Start, Ende] des relevanten Bildausschnitts.
 borders_white = true # True, wenn Korngrenzen im Bild weiß dargestellt werden.
 
 [save_options]
 save_rotated_images = false # Rotierte Zwischenbilder für jeden Winkel abspeichern.
-save_boxplot = true # Boxplot-Grafik der Schnittlängen erzeugen.
-save_histograms = true # Histogramm der Schnittlängen speichern.
-save_excel = true # Detaillierte Excel-Auswertung je Bild schreiben.
+save_boxplot = false # Boxplot-Grafik der Schnittlängen erzeugen.
+save_histograms = false # Histogramm der Schnittlängen speichern.
+save_excel = false # Detaillierte Excel-Auswertung je Bild schreiben.
 append_summary = true # Ergebnisse an die Summary-Arbeitsmappe anhängen.
 show_plots = false # Matplotlib-Fenster nach der Auswertung anzeigen.

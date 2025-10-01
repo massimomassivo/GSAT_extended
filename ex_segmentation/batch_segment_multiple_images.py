@@ -145,10 +145,10 @@ class ManualConfiguration:
     """
 
     input_dir: str = (
-        r"C:\_Development\Github\GSAT_native\images\OM_native_images"
+        r"C:\_Development\Github\GSAT_native\images\Kachelbilder_native"
     )
     output_dir: str = (
-        r"C:\_Development\Github\GSAT_native\images\OM_binarised_images"
+        r"C:\_Development\Github\GSAT_native\images\Kachelbilder_binarised"
     )
     invert_grayscale: bool = True
     apply_skeletonize: bool = True

@@ -45,11 +45,11 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)   # Legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # Fontsize of the figure title
 
 
-file_in_path = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\native_images\M-34524 - 2503i12549.jpg"
+file_in_path = r"I:\aewk.p\03 Mitarbeiter\Studenten_AEWK\Bergt\06_Data\Bilder nach Feature Sortiert\Phase Fraction\R-24220\M-34524 - Poliert - BSE\2000x mit verschiedenen Methoden\01_crop_bottom_output.png"
 
-file_out_path = r"C:\Users\maxbe\PycharmProjects\GSAT_native\images\binarised_images\M-34524 - 2503i12549_segmented.jpg"
+file_out_path = r"I:\aewk.p\03 Mitarbeiter\Studenten_AEWK\Bergt\06_Data\Bilder nach Feature Sortiert\Phase Fraction\R-24220\M-34524 - Poliert - BSE\2000x mit verschiedenen Methoden\01_crop_bottom_output_segmented.png"
 
-invert_grayscales = True
+invert_grayscales = False
 
 
 
@@ -208,105 +208,105 @@ print(f"\nInitiating interactive sharpening filter...")
 img2 = sdrv.interact_driver_sharpen(img2, "unsharp_mask")
 
 
-def interact_adaptive_thresholding(
-    img_in: np.ndarray,
-) -> tuple[np.ndarray, list[float]]:
-    """Interactively select adaptive threshold parameters for ``img_in``.
-
-    Parameters
-    ----------
-    img_in : numpy.ndarray
-        Grayscale image that should be binarised.
-
-    Returns
-    -------
-    tuple of (numpy.ndarray, list of float)
-        Tuple containing the binarised image and a list ``[block_size, offset]``
-        with the chosen parameters.
-
-    Examples
-    --------
-    >>> interact_adaptive_thresholding(np.ones((32, 32), dtype=np.uint8))  # doctest: +SKIP
-    (array([[...]]), [23, -5.0])
-    """
-    img_0 = img_in.copy()
-
-    # Initial values
-    block_sz = 3
-    thresh_offset = 0
-
-    img_thresh = sfilt.threshold_local(img_0, block_size=block_sz, 
-        method='gaussian', offset=thresh_offset)
-
-    img_out = img_as_ubyte(img_0 > img_thresh)
-
-    # Create a figure
-    fig_size = (9,9)
-
-    fig, ax = plt.subplots(1,1)
-    fig.set_size_inches(fig_size[0], fig_size[1])
-    ax.set_aspect('equal')
-
-    # Show the image and save the "matplotlib.image.AxesImage"
-    # object for updating the figure later.
-    img_obj = ax.imshow(img_out, cmap='gray', vmin=0, vmax=255)
-    ax.set_xlabel("X Pixel Number")
-    ax.set_ylabel("Y Pixel Number")
-
-    plt.subplots_adjust(bottom=0.26)
-
-    block_sz_ax = fig.add_axes([0.20, 0.12, 0.15, 0.06])
-    block_sz_txt_box = TextBox(ax=block_sz_ax, label='Block Size (odd)  ', 
-        initial=str(block_sz), textalignment='center')
-
-    filt_off_ax = fig.add_axes([0.70, 0.12, 0.15, 0.06])
-    filt_off_txt_box = TextBox(ax=filt_off_ax, label='Offset (+/-)  ', 
-        initial=str(thresh_offset), textalignment='center')
-
-    update_ax = plt.axes([0.25, 0.03, 0.5, 0.05])
-    update_button = Button(update_ax, 'Update')
-
-    def adapt_thresh_update(event):
-        nonlocal block_sz
-        nonlocal thresh_offset
-        nonlocal img_out
-
-        block_sz = int(block_sz_txt_box.text)
-        thresh_offset = float(filt_off_txt_box.text)
-
-        if block_sz % 2 == 0:
-            block_sz = block_sz + 1
-
-        img_thresh = sfilt.threshold_local(img_0, block_size=block_sz, 
-            method='gaussian', offset=thresh_offset)
-
-        img_out = img_as_ubyte(img_0 > img_thresh)
-
-        # Update the image
-        img_obj.set(data=img_out)
-
-    # Call the update function when the 'update' button is clicked
-    update_button.on_clicked(adapt_thresh_update)
-
-    plt.show()
-
-    # Save final filter parameters
-    fltr_params = [block_sz, thresh_offset]
-
-    return img_out, fltr_params
-
-# Uncomment below to use adaptive thresholding
-print(f"\nInitiating interactive adaptive thresholding...")
-img2, thresh_params = interact_adaptive_thresholding(img2)
-
-print(f"\nSuccessfully applied adaptive thresholding:")
-print(f"    Block size: {thresh_params[0]}")
-print(f"    Intensity offset: {thresh_params[1]}")
+# def interact_adaptive_thresholding(
+#     img_in: np.ndarray,
+# ) -> tuple[np.ndarray, list[float]]:
+#     """Interactively select adaptive threshold parameters for ``img_in``.
+#
+#     Parameters
+#     ----------
+#     img_in : numpy.ndarray
+#         Grayscale image that should be binarised.
+#
+#     Returns
+#     -------
+#     tuple of (numpy.ndarray, list of float)
+#         Tuple containing the binarised image and a list ``[block_size, offset]``
+#         with the chosen parameters.
+#
+#     Examples
+#     --------
+#     >>> interact_adaptive_thresholding(np.ones((32, 32), dtype=np.uint8))  # doctest: +SKIP
+#     (array([[...]]), [23, -5.0])
+#     """
+#     img_0 = img_in.copy()
+#
+#     # Initial values
+#     block_sz = 3
+#     thresh_offset = 0
+#
+#     img_thresh = sfilt.threshold_local(img_0, block_size=block_sz,
+#         method='gaussian', offset=thresh_offset)
+#
+#     img_out = img_as_ubyte(img_0 > img_thresh)
+#
+#     # Create a figure
+#     fig_size = (9,9)
+#
+#     fig, ax = plt.subplots(1,1)
+#     fig.set_size_inches(fig_size[0], fig_size[1])
+#     ax.set_aspect('equal')
+#
+#     # Show the image and save the "matplotlib.image.AxesImage"
+#     # object for updating the figure later.
+#     img_obj = ax.imshow(img_out, cmap='gray', vmin=0, vmax=255)
+#     ax.set_xlabel("X Pixel Number")
+#     ax.set_ylabel("Y Pixel Number")
+#
+#     plt.subplots_adjust(bottom=0.26)
+#
+#     block_sz_ax = fig.add_axes([0.20, 0.12, 0.15, 0.06])
+#     block_sz_txt_box = TextBox(ax=block_sz_ax, label='Block Size (odd)  ',
+#         initial=str(block_sz), textalignment='center')
+#
+#     filt_off_ax = fig.add_axes([0.70, 0.12, 0.15, 0.06])
+#     filt_off_txt_box = TextBox(ax=filt_off_ax, label='Offset (+/-)  ',
+#         initial=str(thresh_offset), textalignment='center')
+#
+#     update_ax = plt.axes([0.25, 0.03, 0.5, 0.05])
+#     update_button = Button(update_ax, 'Update')
+#
+#     def adapt_thresh_update(event):
+#         nonlocal block_sz
+#         nonlocal thresh_offset
+#         nonlocal img_out
+#
+#         block_sz = int(block_sz_txt_box.text)
+#         thresh_offset = float(filt_off_txt_box.text)
+#
+#         if block_sz % 2 == 0:
+#             block_sz = block_sz + 1
+#
+#         img_thresh = sfilt.threshold_local(img_0, block_size=block_sz,
+#             method='gaussian', offset=thresh_offset)
+#
+#         img_out = img_as_ubyte(img_0 > img_thresh)
+#
+#         # Update the image
+#         img_obj.set(data=img_out)
+#
+#     # Call the update function when the 'update' button is clicked
+#     update_button.on_clicked(adapt_thresh_update)
+#
+#     plt.show()
+#
+#     # Save final filter parameters
+#     fltr_params = [block_sz, thresh_offset]
+#
+#     return img_out, fltr_params
+#
+# # Uncomment below to use adaptive thresholding
+# print(f"\nInitiating interactive adaptive thresholding...")
+# img2, thresh_params = interact_adaptive_thresholding(img2)
+#
+# print(f"\nSuccessfully applied adaptive thresholding:")
+# print(f"    Block size: {thresh_params[0]}")
+# print(f"    Intensity offset: {thresh_params[1]}")
 
 
 # -------- HYSTERESIS THRESHOLDING --------
-# print(f"\nInitiating interactive hysteresis thresholding...")
-# img2 = sdrv.interact_driver_thresholding(img2, "hysteresis_threshold_text")
+print(f"\nInitiating interactive hysteresis thresholding...")
+img2 = sdrv.interact_driver_thresholding(img2, "hysteresis_threshold_text")
 
 
 # -------- MORPHOLOGICAL OPERATIONS --------
