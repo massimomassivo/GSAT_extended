@@ -141,37 +141,7 @@ def astm_g_from_lbar_um(lbar_um: float) -> float:
     return float(np.round(g, 1))
 
 
-T95_TABLE = {
-    1: 12.706,
-    2: 4.303,
-    3: 3.182,
-    4: 2.776,
-    5: 2.571,
-    6: 2.447,
-    7: 2.365,
-    8: 2.306,
-    9: 2.262,
-    10: 2.228,
-    12: 2.179,
-    15: 2.131,
-    20: 2.086,
-    25: 2.060,
-    30: 2.042,
-    40: 2.021,
-    60: 2.000,
-    120: 1.980,
-    240: 1.970,
-    10_000_000: 1.960,
-}
-
-
-def t95_from_df(df: int) -> float:
-    if df <= 1:
-        return T95_TABLE[1]
-    for key in sorted(T95_TABLE.keys()):
-        if df <= key:
-            return T95_TABLE[key]
-    return 1.960
+T95 = 1.960  # sufficiently accurate for large sample sizes
 
 
 @dataclass
@@ -773,12 +743,11 @@ def _compute_angle_statistics(
     ci95_low = float("nan")
     ci95_high = float("nan")
     rel_accuracy = float("nan")
-    n = int(distances.size)
+    valid_distances = distances[np.isfinite(distances)]
+    n = int(valid_distances.size)
     if n >= 2 and np.isfinite(average_length):
-        sample_std = float(np.std(distances, ddof=1))
-        df = n - 1
-        t_multiplier = t95_from_df(df)
-        ci95_halfwidth = t_multiplier * sample_std / np.sqrt(n)
+        sample_std = float(np.std(valid_distances, ddof=1))
+        ci95_halfwidth = T95 * sample_std / np.sqrt(n)
         ci95_low = average_length - ci95_halfwidth
         ci95_high = average_length + ci95_halfwidth
         if average_length > 0:
