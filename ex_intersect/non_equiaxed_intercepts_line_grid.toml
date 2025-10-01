@@ -1,0 +1,35 @@
+# Konfiguration für die Auswertung nicht-äquiaxierter Proben mit dem Line-Grid-Verfahren.
+# Alle Pfade und Optionen werden ausschließlich aus dieser Datei gelesen.
+
+[paths]
+# Ordner mit Längsschliff-Bildern (Longitudinal / "L").
+longitudinal_dir = "C:/path/to/L_images"
+# Ordner mit Querschliff-Bildern (Transversal / "T").
+transverse_dir = "C:/path/to/T_images"
+# Wurzelverzeichnis, in dem Unterordner "L" und "T" für die Ergebnisse angelegt werden.
+output_dir = "C:/path/to/out_non_equiaxed"
+# Optional: Liste zulässiger Dateimuster. Wird der Eintrag weggelassen, greifen die Standardendungen.
+file_globs = ["*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff", "*.bmp"]
+
+[pipeline]
+# Die folgenden Werte überschreiben die Default-Parameter der Pipeline.
+row_step = 20
+n_theta_steps = 6
+theta_start = 0.0
+theta_end = 180.0
+inclusive_theta_end = false
+reskeletonize = true
+scalebar_pixel = 464.0
+scalebar_micrometer = 50.0
+crop_rows = [0, 1825]
+crop_cols = [0, 2580]
+borders_white = true
+
+[save]
+# Optionen zum Schreiben von Ausgabedateien; entspricht SaveOptions in line_grid_pipeline.py.
+save_excel = true
+save_boxplot = true
+save_histograms = true
+save_rotated_images = false
+append_summary = true
+show_plots = false
