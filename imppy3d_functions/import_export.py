@@ -56,7 +56,7 @@ def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
 
     # Makes forward slashes into backward slashes for W10, and also makes the
     # directory string all lowercase
-    file_path = os.path.normcase(file_path)
+    # file_path = os.path.normcase(file_path)
     
     quiet = quiet_in
     # ---- End Local Copies ----
@@ -905,7 +905,7 @@ def save_image(img_in, path_in, compression=False, quiet_in=False):
 
     # Makes forward slashes into backward slashes for W10, and also makes the
     # directory string all lowercase
-    file_path = os.path.normcase(file_path)
+    # file_path = os.path.normcase(file_path)
     compress_bool = compression
     quiet = quiet_in
 
