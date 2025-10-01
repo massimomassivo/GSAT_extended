@@ -201,6 +201,28 @@ def _compute_pooled_statistics(
     }
 
 
+def _initialise_sample_summary_row(sample_id: str, build_dir_long_deg: int) -> Dict[str, object]:
+    """Create a dictionary populated with default values for the sample summary."""
+
+    return {
+        "sample_id": sample_id,
+        "build_dir_long_deg": build_dir_long_deg,
+        "N_L": float("nan"),
+        "N_T": float("nan"),
+        "lbar_L_um": float("nan"),
+        "lbar_T_um": float("nan"),
+        "s_L_um": float("nan"),
+        "s_T_um": float("nan"),
+        "lbar_rand_um": float("nan"),
+        "ci95_half_um": float("nan"),
+        "ci95_low_um": float("nan"),
+        "ci95_high_um": float("nan"),
+        "rel_accuracy_pct": float("nan"),
+        "ASTM_G_rand": float("nan"),
+        "weights_note": "L weighted 2x (l,p), T weighted 1x (t)",
+    }
+
+
 def _as_path(value: object, *, key: str, context: str) -> Path:
     if not isinstance(value, str):
         raise TypeError(f"Expected '{key}' in {context} to be a string path, not {type(value).__name__}")
@@ -690,6 +712,119 @@ def main(config_path: Optional[Path] = None) -> None:
         if not plane_summary_df.empty:
             plane_summary_df = plane_summary_df[plane_summary_columns]
 
+        sample_summary_row = _initialise_sample_summary_row(
+            derived_sample_id, config.build_dir_long_deg
+        )
+        sample_summary_columns = [
+            "sample_id",
+            "build_dir_long_deg",
+            "N_L",
+            "N_T",
+            "lbar_L_um",
+            "lbar_T_um",
+            "s_L_um",
+            "s_T_um",
+            "lbar_rand_um",
+            "ci95_half_um",
+            "ci95_low_um",
+            "ci95_high_um",
+            "rel_accuracy_pct",
+            "ASTM_G_rand",
+            "weights_note",
+        ]
+
+        sample_summary_warning: Optional[str] = None
+        sample_summary_report: Optional[str] = None
+        if "L" in plane_stats and "T" in plane_stats:
+            _, l_stats = plane_stats["L"]
+            _, t_stats = plane_stats["T"]
+
+            N_L = int(l_stats["segment_count"])
+            N_T = int(t_stats["segment_count"])
+            lbar_L = float(l_stats["average_length"])
+            lbar_T = float(t_stats["average_length"])
+            s_L = float(l_stats["std_dev"])
+            s_T = float(t_stats["std_dev"])
+
+            requirements: List[str] = []
+            if N_L < 2:
+                requirements.append("N_L >= 2")
+            if N_T < 2:
+                requirements.append("N_T >= 2")
+            if not np.isfinite(lbar_L) or lbar_L <= 0:
+                requirements.append("lbar_L > 0")
+            if not np.isfinite(lbar_T) or lbar_T <= 0:
+                requirements.append("lbar_T > 0")
+            if not np.isfinite(s_L):
+                requirements.append("s_L finite")
+            if not np.isfinite(s_T):
+                requirements.append("s_T finite")
+
+            if not requirements:
+                sample_summary_row.update(
+                    {
+                        "N_L": N_L,
+                        "N_T": N_T,
+                        "lbar_L_um": lbar_L,
+                        "lbar_T_um": lbar_T,
+                        "s_L_um": s_L,
+                        "s_T_um": s_T,
+                    }
+                )
+
+                v_L = (s_L ** 2) / (N_L * (lbar_L ** 2))
+                v_T = (s_T ** 2) / (N_T * (lbar_T ** 2))
+                var_ln_rand = (4.0 * v_L + 1.0 * v_T) / 9.0
+                sigma_ln = float(np.sqrt(var_ln_rand))
+
+                lbar_rand = float((lbar_L ** 2 * lbar_T) ** (1.0 / 3.0))
+                half = 1.960 * sigma_ln * lbar_rand
+                ci_low = lbar_rand - half
+                ci_high = lbar_rand + half
+                rel_accuracy = 100.0 * half / lbar_rand if lbar_rand > 0 else float("nan")
+                astm_g = float(pipeline.astm_g_from_lbar_um(lbar_rand))
+
+                sample_summary_row.update(
+                    {
+                        "lbar_rand_um": lbar_rand,
+                        "ci95_half_um": half,
+                        "ci95_low_um": ci_low,
+                        "ci95_high_um": ci_high,
+                        "rel_accuracy_pct": rel_accuracy,
+                        "ASTM_G_rand": astm_g,
+                    }
+                )
+
+                sample_summary_report = (
+                    "[SUMMARY] SampleSummary: l_rand = "
+                    f"{lbar_rand:.3f} µm ± {half:.3f} µm (95% CI: {ci_low:.3f}–{ci_high:.3f}), "
+                    f"RA = {rel_accuracy:.2f}%, ASTM G = {astm_g:.2f}, N_L/N_T = {N_L}/{N_T}."
+                )
+            else:
+                sample_summary_warning = (
+                    "; ".join(requirements)
+                    or "Missing requirements for sample summary computation"
+                )
+                sample_summary_report = (
+                    "[WARNING] SampleSummary not computed due to unmet requirement(s): "
+                    f"{sample_summary_warning}. N_L={N_L}, N_T={N_T}."
+                )
+        else:
+            missing_planes = []
+            if "L" not in plane_stats:
+                missing_planes.append("L")
+            if "T" not in plane_stats:
+                missing_planes.append("T")
+            sample_summary_warning = (
+                "Missing plane statistics: " + ", ".join(missing_planes)
+            )
+            sample_summary_report = (
+                "[WARNING] SampleSummary not computed: "
+                f"{sample_summary_warning}."
+            )
+
+        sample_summary_df = pd.DataFrame([sample_summary_row], columns=sample_summary_columns)
+
         master_excel_name = config.master_excel_name
         if not master_excel_name.lower().endswith(".xlsx"):
             master_excel_name = f"{master_excel_name}.xlsx"
@@ -700,6 +835,7 @@ def main(config_path: Optional[Path] = None) -> None:
                 dataframe.to_excel(writer, index=False, sheet_name="PerImage")
                 if not plane_summary_df.empty:
                     plane_summary_df.to_excel(writer, index=False, sheet_name="PlaneSummary")
+                sample_summary_df.to_excel(writer, index=False, sheet_name="SampleSummary")
             print(
                 "[SUMMARY] Master Excel table saved to "
                 f"'{excel_path}'."
@@ -716,6 +852,8 @@ def main(config_path: Optional[Path] = None) -> None:
             "[SUMMARY] Master table contains "
             f"{len(per_image_records)} row(s) (L: {l_count}, T: {t_count})."
         )
+        if sample_summary_report:
+            print(sample_summary_report)
     else:
         print("[SUMMARY] No per-image statistics were recorded; master tables were not created.")
 
