@@ -125,6 +125,10 @@ class AngleStatistics:
     thickness_from_average: float
     thickness_from_median: float
     astm_g: float
+    ci95_halfwidth_um: float
+    ci95_low_um: float
+    ci95_high_um: float
+    rel_accuracy_pct: float
 
 
 def astm_g_from_lbar_um(lbar_um: float) -> float:
@@ -135,6 +139,39 @@ def astm_g_from_lbar_um(lbar_um: float) -> float:
     l_mm = lbar_um / 1000.0
     g = (-6.643856 * np.log10(l_mm)) - 3.288
     return float(np.round(g, 1))
+
+
+T95_TABLE = {
+    1: 12.706,
+    2: 4.303,
+    3: 3.182,
+    4: 2.776,
+    5: 2.571,
+    6: 2.447,
+    7: 2.365,
+    8: 2.306,
+    9: 2.262,
+    10: 2.228,
+    12: 2.179,
+    15: 2.131,
+    20: 2.086,
+    25: 2.060,
+    30: 2.042,
+    40: 2.021,
+    60: 2.000,
+    120: 1.980,
+    240: 1.970,
+    10_000_000: 1.960,
+}
+
+
+def t95_from_df(df: int) -> float:
+    if df <= 1:
+        return T95_TABLE[1]
+    for key in sorted(T95_TABLE.keys()):
+        if df <= key:
+            return T95_TABLE[key]
+    return 1.960
 
 
 @dataclass
@@ -228,6 +265,11 @@ def _print_angle_statistics(stat: "AngleStatistics") -> None:
         f"  Thickness from Median Inverse Grain Size (µm): {stat.thickness_from_median:.2f}"
     )
     print(f"  ASTM G (from l̄): {stat.astm_g:.1f}")
+    print(
+        "  95% CI (±): "
+        f"{stat.ci95_halfwidth_um:.3f} µm  -> [{stat.ci95_low_um:.3f}, {stat.ci95_high_um:.3f}] µm"
+    )
+    print(f"  Relative Accuracy (95%): {stat.rel_accuracy_pct:.2f} %")
 
 
 def print_statistics(statistics: "StatisticsResult") -> None:
@@ -254,6 +296,10 @@ def print_statistics(statistics: "StatisticsResult") -> None:
     ...         thickness_from_average=float("nan"),
     ...         thickness_from_median=float("nan"),
     ...         astm_g=float("nan"),
+    ...         ci95_halfwidth_um=float("nan"),
+    ...         ci95_low_um=float("nan"),
+    ...         ci95_high_um=float("nan"),
+    ...         rel_accuracy_pct=float("nan"),
     ...     ),
     ...     results_table=pd.DataFrame(),
     ...     distances_df=pd.DataFrame(),
@@ -478,6 +524,10 @@ def aggregate_statistics(
         "Std. Deviation in Grain Size (µm)",
         "Thickness (Average inverse Grain Size) (µm)",
         "Thickness (Median inverse Grain Size) (µm)",
+        "95% CI half-width (µm)",
+        "95% CI low (µm)",
+        "95% CI high (µm)",
+        "Relative Accuracy % (95% CI)",
     ]
 
     results_dict: Dict[str, List[object]] = {"Property": properties}
@@ -499,6 +549,10 @@ def aggregate_statistics(
             stats.std_dev,
             stats.thickness_from_average,
             stats.thickness_from_median,
+            stats.ci95_halfwidth_um,
+            stats.ci95_low_um,
+            stats.ci95_high_um,
+            stats.rel_accuracy_pct,
         ]
 
     non_empty_distances = [arr for arr in measurements.per_theta_distances if arr.size]
@@ -519,6 +573,10 @@ def aggregate_statistics(
         overall_stats.std_dev,
         overall_stats.thickness_from_average,
         overall_stats.thickness_from_median,
+        overall_stats.ci95_halfwidth_um,
+        overall_stats.ci95_low_um,
+        overall_stats.ci95_high_um,
+        overall_stats.rel_accuracy_pct,
     ]
 
     results_table = pd.DataFrame(results_dict)
@@ -538,6 +596,8 @@ def aggregate_statistics(
                 "Thickness (Med. inv. gs) (µm)": overall_stats.thickness_from_median,
                 "Inverse Int Avg": overall_stats.average_inverse,
                 "Inverse Int Med": overall_stats.median_inverse,
+                "95% CI half-width (µm)": overall_stats.ci95_halfwidth_um,
+                "%RA (95% CI)": overall_stats.rel_accuracy_pct,
             }
         ]
     )
@@ -692,6 +752,10 @@ def _compute_angle_statistics(
             thickness_from_average=float("nan"),
             thickness_from_median=float("nan"),
             astm_g=float("nan"),
+            ci95_halfwidth_um=float("nan"),
+            ci95_low_um=float("nan"),
+            ci95_high_um=float("nan"),
+            rel_accuracy_pct=float("nan"),
         )
 
     total_length = float(np.sum(distances))
@@ -705,6 +769,21 @@ def _compute_angle_statistics(
     thickness_med = float(1.0 / (1.5 * median_inverse)) if median_inverse > 0 else float("nan")
     astm_g = astm_g_from_lbar_um(average_length)
 
+    ci95_halfwidth = float("nan")
+    ci95_low = float("nan")
+    ci95_high = float("nan")
+    rel_accuracy = float("nan")
+    n = int(distances.size)
+    if n >= 2 and np.isfinite(average_length):
+        sample_std = float(np.std(distances, ddof=1))
+        df = n - 1
+        t_multiplier = t95_from_df(df)
+        ci95_halfwidth = t_multiplier * sample_std / np.sqrt(n)
+        ci95_low = average_length - ci95_halfwidth
+        ci95_high = average_length + ci95_halfwidth
+        if average_length > 0:
+            rel_accuracy = 100.0 * ci95_halfwidth / average_length
+
     return AngleStatistics(
         angle_label=angle_label,
         segment_count=int(distances.size),
@@ -717,6 +796,10 @@ def _compute_angle_statistics(
         thickness_from_average=thickness_avg,
         thickness_from_median=thickness_med,
         astm_g=astm_g,
+        ci95_halfwidth_um=ci95_halfwidth,
+        ci95_low_um=ci95_low,
+        ci95_high_um=ci95_high,
+        rel_accuracy_pct=rel_accuracy,
     )
 
 
