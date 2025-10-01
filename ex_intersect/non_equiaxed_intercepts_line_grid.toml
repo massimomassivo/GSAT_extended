@@ -11,14 +11,19 @@ output_dir = "C:/path/to/out_non_equiaxed"
 # Optional: Liste zulässiger Dateimuster. Wird der Eintrag weggelassen, greifen die Standardendungen.
 file_globs = ["*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff", "*.bmp"]
 
+[orientation]
+# Pflichtfeld: Aufbaurichtung (in Grad) im Längsschliff-Bild.
+# Bedeutung (Bildkoordinaten):
+#  - 0° / 180°  = horizontal (links↔rechts)
+#  - 90°        = vertikal  (unten↔oben)
+# Hinweis: Körnerelongation wird in L- und P-Ebene bei 0° erwartet.
+build_dir_long_deg = 0
+
 [pipeline]
 # Die folgenden Werte überschreiben die Default-Parameter der Pipeline.
+# Hinweis: Rotationswinkel (22,5°-Schritte bis 180°) werden automatisch durch das
+# Skript gesetzt und können hier nicht angepasst werden.
 row_step = 20
-n_theta_steps = 6
-theta_start = 0.0
-theta_end = 180.0
-inclusive_theta_end = false
-reskeletonize = true
 scalebar_pixel = 464.0
 scalebar_micrometer = 50.0
 crop_rows = [0, 1825]

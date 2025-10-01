@@ -31,6 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover - executed when stdlib module is
     import tomli as tomllib  # type: ignore[assignment]
 
 import pandas as pd
+import numpy as np
 
 from ex_intersect import line_grid_pipeline as pipeline
 from ex_intersect.batch_count_intersects_line_grid import ensure_directory
@@ -73,6 +74,7 @@ class NonEquiaxedConfig:
     master_excel_name: str
     write_master_excel: bool
     write_master_csv: bool
+    build_dir_long_deg: int
 
 
 @dataclass(slots=True)
@@ -82,6 +84,7 @@ class PerImageRecord:
     sample_id: str
     plane: str
     image_name: str
+    build_dir_long_deg: int
     n_intercepts: int
     lbar_um: float
     s_um: float
@@ -94,9 +97,108 @@ class PerImageRecord:
     timestamp: str
 
 
+@dataclass(slots=True)
+class PlaneSummaryRecord:
+    """Store pooled statistics for a specific metallographic plane."""
+
+    sample_id: str
+    plane: str
+    source_plane: str
+    n_images: int
+    n_intercepts: int
+    lbar_um: float
+    s_um: float
+    ci95_half_um: float
+    ci95_low_um: float
+    ci95_high_um: float
+    rel_accuracy_pct: float
+    astm_g: float
+    expected_orientation_0deg: bool
+    build_dir_long_deg: int
+
+
+@dataclass(slots=True)
+class PlaneProcessingResult:
+    """Capture outputs produced while processing one plane."""
+
+    processed: int
+    found: int
+    per_image_records: List[PerImageRecord]
+    pooled_distances: np.ndarray
+    pooled_inverse_distances: np.ndarray
+
+
+FORCED_THETA_VALUES: Tuple[float, ...] = (
+    22.5,
+    45.0,
+    67.5,
+    90.0,
+    112.5,
+    135.0,
+    157.5,
+    180.0,
+)
+
+
 def _load_toml(path: Path) -> MutableMapping[str, object]:
     with path.open("rb") as handle:
         return tomllib.load(handle)
+
+
+def _compute_pooled_statistics(
+    distances: np.ndarray, inverse_distances: np.ndarray
+) -> Dict[str, float]:
+    """Derive summary metrics for pooled intercept distances."""
+
+    distances = np.asarray(distances, dtype=float)
+    inverse_distances = np.asarray(inverse_distances, dtype=float)
+
+    if distances.size == 0:
+        return {
+            "segment_count": 0,
+            "total_length": 0.0,
+            "average_length": float("nan"),
+            "std_dev": float("nan"),
+            "median_length": float("nan"),
+            "ci95_halfwidth_um": float("nan"),
+            "ci95_low_um": float("nan"),
+            "ci95_high_um": float("nan"),
+            "rel_accuracy_pct": float("nan"),
+            "astm_g": float("nan"),
+        }
+
+    total_length = float(np.sum(distances))
+    average_length = float(np.mean(distances))
+    std_dev = float(np.std(distances))
+    median_length = float(np.median(distances))
+    astm_g = pipeline.astm_g_from_lbar_um(average_length)
+
+    ci95_half = float("nan")
+    ci95_low = float("nan")
+    ci95_high = float("nan")
+    rel_accuracy = float("nan")
+    valid_distances = distances[np.isfinite(distances)]
+    n_valid = int(valid_distances.size)
+    if n_valid >= 2 and np.isfinite(average_length):
+        sample_std = float(np.std(valid_distances, ddof=1))
+        ci95_half = pipeline.T95 * sample_std / np.sqrt(n_valid)
+        ci95_low = average_length - ci95_half
+        ci95_high = average_length + ci95_half
+        if average_length > 0:
+            rel_accuracy = 100.0 * ci95_half / average_length
+
+    return {
+        "segment_count": int(distances.size),
+        "total_length": total_length,
+        "average_length": average_length,
+        "std_dev": std_dev,
+        "median_length": median_length,
+        "ci95_halfwidth_um": ci95_half,
+        "ci95_low_um": ci95_low,
+        "ci95_high_um": ci95_high,
+        "rel_accuracy_pct": rel_accuracy,
+        "astm_g": astm_g,
+    }
 
 
 def _as_path(value: object, *, key: str, context: str) -> Path:
@@ -156,7 +258,7 @@ def load_config(path: Path) -> NonEquiaxedConfig:
     path = Path(path)
     data = _load_toml(path)
 
-    allowed_top_level = {"paths", "pipeline", "save", "save_options", "meta"}
+    allowed_top_level = {"paths", "pipeline", "save", "save_options", "meta", "orientation"}
     _ensure_allowed_keys(data, allowed_top_level, str(path))
 
     if "save" in data and "save_options" in data:
@@ -192,6 +294,31 @@ def load_config(path: Path) -> NonEquiaxedConfig:
     output_root = _as_path(paths_section["output_dir"], key="output_dir", context=f"{path}::paths")
 
     file_globs = _parse_file_globs(paths_section.get("file_globs"), context=f"{path}::paths")
+
+    orientation_section = data.get("orientation")
+    if orientation_section is None:
+        raise KeyError(f"Missing required '[orientation]' section in '{path}'.")
+    orientation_mapping = _ensure_mapping(orientation_section, key="orientation", context=str(path))
+    allowed_orientation_keys = {"build_dir_long_deg"}
+    _ensure_allowed_keys(orientation_mapping, allowed_orientation_keys, f"{path}::orientation")
+    if "build_dir_long_deg" not in orientation_mapping:
+        raise KeyError(
+            f"Missing required key 'build_dir_long_deg' in [orientation] section of '{path}'."
+        )
+    raw_build_dir = orientation_mapping["build_dir_long_deg"]
+    if not isinstance(raw_build_dir, (int, float)):
+        raise TypeError(
+            "The entry 'build_dir_long_deg' in "
+            f"{path}::orientation must be a number, not {type(raw_build_dir).__name__}"
+        )
+    build_dir_value = float(raw_build_dir)
+    allowed_orientations = {0.0, 90.0, 180.0}
+    if not any(abs(build_dir_value - allowed) < 1e-6 for allowed in allowed_orientations):
+        raise ValueError(
+            "The entry 'build_dir_long_deg' in "
+            f"{path}::orientation must be one of 0, 90, or 180 degrees; received {raw_build_dir!r}."
+        )
+    build_dir_long_deg = int(round(build_dir_value))
 
     pipeline_section = data.get("pipeline", {})
     pipeline_mapping = _ensure_mapping(pipeline_section, key="pipeline", context=str(path))
@@ -255,6 +382,7 @@ def load_config(path: Path) -> NonEquiaxedConfig:
         master_excel_name=master_excel_name,
         write_master_excel=write_master_excel,
         write_master_csv=write_master_csv,
+        build_dir_long_deg=build_dir_long_deg,
     )
 
 
@@ -279,11 +407,33 @@ def _build_config_for_image(
     image_path: Path,
     plane_output_dir: Path,
     pipeline_overrides: Mapping[str, object],
+    *,
+    build_dir_long_deg: int,
 ) -> pipeline.LineGridConfig:
     overrides = dict(pipeline_overrides)
     overrides["file_in_path"] = Path(image_path)
     overrides["results_base_dir"] = plane_output_dir
-    return pipeline.LineGridConfig(**overrides)
+    overrides["theta_start"] = FORCED_THETA_VALUES[0]
+    overrides["theta_end"] = FORCED_THETA_VALUES[-1]
+    overrides["n_theta_steps"] = len(FORCED_THETA_VALUES)
+    overrides["inclusive_theta_end"] = True
+    overrides["reskeletonize"] = True
+    overrides["build_dir_long_deg"] = build_dir_long_deg
+
+    config = pipeline.LineGridConfig(**overrides)
+    theta_values = np.linspace(
+        config.theta_start,
+        config.theta_end,
+        int(np.round(config.n_theta_steps)),
+        endpoint=config.inclusive_theta_end,
+    )
+    if not np.allclose(theta_values, FORCED_THETA_VALUES, atol=1e-6):
+        raise AssertionError(
+            "Line grid configuration produced unexpected rotation angles: "
+            f"{theta_values.tolist()}"
+        )
+
+    return config
 
 
 def _derive_results_dir(config: pipeline.LineGridConfig) -> Path:
@@ -299,7 +449,8 @@ def _process_plane(
     pipeline_overrides: Mapping[str, object],
     save_options: pipeline.SaveOptions,
     config_context: str,
-) -> Tuple[int, int, List[PerImageRecord]]:
+    build_dir_long_deg: int,
+) -> PlaneProcessingResult:
     ensure_directory(plane.output_dir)
 
     images = _gather_image_files(plane.input_dir, file_globs, context=f"{config_context}::{plane.label}")
@@ -308,10 +459,17 @@ def _process_plane(
     processed = 0
     failures: List[Tuple[Path, Exception]] = []
     records: List[PerImageRecord] = []
+    pooled_distances: List[np.ndarray] = []
+    pooled_inverse: List[np.ndarray] = []
 
     for index, image_path in enumerate(images, start=1):
         print(f"[INFO] ({plane.label}) Processing {image_path} ({index}/{len(images)})")
-        config = _build_config_for_image(image_path, plane.output_dir, pipeline_overrides)
+        config = _build_config_for_image(
+            image_path,
+            plane.output_dir,
+            pipeline_overrides,
+            build_dir_long_deg=build_dir_long_deg,
+        )
         options = replace(save_options)
         try:
             statistics, _artifacts = pipeline.process_image(config, options)
@@ -330,6 +488,7 @@ def _process_plane(
                 sample_id="",  # placeholder, filled later
                 plane=plane.label,
                 image_name=image_path.name,
+                build_dir_long_deg=build_dir_long_deg,
                 n_intercepts=int(overall_stats.segment_count),
                 lbar_um=float(overall_stats.average_length),
                 s_um=float(overall_stats.std_dev),
@@ -343,12 +502,34 @@ def _process_plane(
             )
         )
 
+        pooled_distances.append(
+            statistics.distances_df.get("Distances (µm)", pd.Series(dtype=float)).to_numpy(dtype=float).ravel()
+        )
+        pooled_inverse.append(
+            statistics.inverse_distances_df.get("Inverse Distances (1/µm)", pd.Series(dtype=float)).to_numpy(dtype=float).ravel()
+        )
+
     if failures:
         print(f"[SUMMARY] ({plane.label}) Completed with {processed} success(es) and {len(failures)} failure(s).")
     else:
         print(f"[SUMMARY] ({plane.label}) Processed all {processed} image(s) successfully.")
 
-    return processed, len(images), records
+    non_empty_distances = [arr for arr in pooled_distances if arr.size]
+    non_empty_inverse = [arr for arr in pooled_inverse if arr.size]
+    pooled_distance_array = (
+        np.concatenate(non_empty_distances) if non_empty_distances else np.array([], dtype=float)
+    )
+    pooled_inverse_array = (
+        np.concatenate(non_empty_inverse) if non_empty_inverse else np.array([], dtype=float)
+    )
+
+    return PlaneProcessingResult(
+        processed=processed,
+        found=len(images),
+        per_image_records=records,
+        pooled_distances=pooled_distance_array,
+        pooled_inverse_distances=pooled_inverse_array,
+    )
 
 
 def main(config_path: Optional[Path] = None) -> None:
@@ -360,26 +541,28 @@ def main(config_path: Optional[Path] = None) -> None:
 
     print(f"[INFO] Loaded configuration from '{resolved_path}'.")
     print(f"[INFO] Using file patterns: {', '.join(config.file_globs)}")
+    print(f"[INFO] build_dir_long_deg (L-plane reference): {config.build_dir_long_deg}°")
 
     ensure_directory(config.output_root)
 
     total_processed = 0
     total_found = 0
     per_image_records: List[PerImageRecord] = []
-    plane_record_counts: Dict[str, int] = {}
+    plane_results: Dict[str, PlaneProcessingResult] = {}
 
     for plane in (config.longitudinal, config.transverse):
-        processed, found, plane_records = _process_plane(
+        result = _process_plane(
             plane,
             file_globs=config.file_globs,
             pipeline_overrides=config.pipeline_overrides,
             save_options=config.save_options,
             config_context=str(resolved_path),
+            build_dir_long_deg=config.build_dir_long_deg,
         )
-        total_processed += processed
-        total_found += found
-        per_image_records.extend(plane_records)
-        plane_record_counts[plane.label] = len(plane_records)
+        total_processed += result.processed
+        total_found += result.found
+        per_image_records.extend(result.per_image_records)
+        plane_results[plane.label] = result
 
     print(
         "[SUMMARY] Completed non-equiaxed processing: "
@@ -394,11 +577,83 @@ def main(config_path: Optional[Path] = None) -> None:
         for record in per_image_records:
             record.sample_id = derived_sample_id
 
+        plane_summary_records: List[PlaneSummaryRecord] = []
+        plane_stats: Dict[str, Tuple[PlaneProcessingResult, Dict[str, float]]] = {}
+        for plane_label, result in plane_results.items():
+            stats = _compute_pooled_statistics(
+                result.pooled_distances, result.pooled_inverse_distances
+            )
+            plane_stats[plane_label] = (result, stats)
+
+        if "L" in plane_stats:
+            l_result, l_stats = plane_stats["L"]
+            plane_summary_records.append(
+                PlaneSummaryRecord(
+                    sample_id=derived_sample_id,
+                    plane="l",
+                    source_plane="L",
+                    n_images=len(l_result.per_image_records),
+                    n_intercepts=int(l_stats["segment_count"]),
+                    lbar_um=float(l_stats["average_length"]),
+                    s_um=float(l_stats["std_dev"]),
+                    ci95_half_um=float(l_stats["ci95_halfwidth_um"]),
+                    ci95_low_um=float(l_stats["ci95_low_um"]),
+                    ci95_high_um=float(l_stats["ci95_high_um"]),
+                    rel_accuracy_pct=float(l_stats["rel_accuracy_pct"]),
+                    astm_g=float(l_stats["astm_g"]),
+                    expected_orientation_0deg=True,
+                    build_dir_long_deg=config.build_dir_long_deg,
+                )
+            )
+
+        if "T" in plane_stats:
+            t_result, t_stats = plane_stats["T"]
+            plane_summary_records.append(
+                PlaneSummaryRecord(
+                    sample_id=derived_sample_id,
+                    plane="t",
+                    source_plane="T",
+                    n_images=len(t_result.per_image_records),
+                    n_intercepts=int(t_stats["segment_count"]),
+                    lbar_um=float(t_stats["average_length"]),
+                    s_um=float(t_stats["std_dev"]),
+                    ci95_half_um=float(t_stats["ci95_halfwidth_um"]),
+                    ci95_low_um=float(t_stats["ci95_low_um"]),
+                    ci95_high_um=float(t_stats["ci95_high_um"]),
+                    rel_accuracy_pct=float(t_stats["rel_accuracy_pct"]),
+                    astm_g=float(t_stats["astm_g"]),
+                    expected_orientation_0deg=False,
+                    build_dir_long_deg=config.build_dir_long_deg,
+                )
+            )
+
+        if "L" in plane_stats:
+            l_result, l_stats = plane_stats["L"]
+            plane_summary_records.append(
+                PlaneSummaryRecord(
+                    sample_id=derived_sample_id,
+                    plane="p",
+                    source_plane="L",
+                    n_images=len(l_result.per_image_records),
+                    n_intercepts=int(l_stats["segment_count"]),
+                    lbar_um=float(l_stats["average_length"]),
+                    s_um=float(l_stats["std_dev"]),
+                    ci95_half_um=float(l_stats["ci95_halfwidth_um"]),
+                    ci95_low_um=float(l_stats["ci95_low_um"]),
+                    ci95_high_um=float(l_stats["ci95_high_um"]),
+                    rel_accuracy_pct=float(l_stats["rel_accuracy_pct"]),
+                    astm_g=float(l_stats["astm_g"]),
+                    expected_orientation_0deg=True,
+                    build_dir_long_deg=config.build_dir_long_deg,
+                )
+            )
+
         dataframe = pd.DataFrame(asdict(record) for record in per_image_records)
         ordered_columns = [
             "sample_id",
             "plane",
             "image_name",
+            "build_dir_long_deg",
             "n_intercepts",
             "lbar_um",
             "s_um",
@@ -412,13 +667,36 @@ def main(config_path: Optional[Path] = None) -> None:
         ]
         dataframe = dataframe[ordered_columns]
 
+        plane_summary_df = pd.DataFrame(asdict(record) for record in plane_summary_records)
+        plane_summary_columns = [
+            "sample_id",
+            "plane",
+            "source_plane",
+            "n_images",
+            "n_intercepts",
+            "lbar_um",
+            "s_um",
+            "ci95_half_um",
+            "ci95_low_um",
+            "ci95_high_um",
+            "rel_accuracy_pct",
+            "astm_g",
+            "expected_orientation_0deg",
+            "build_dir_long_deg",
+        ]
+        if not plane_summary_df.empty:
+            plane_summary_df = plane_summary_df[plane_summary_columns]
+
         master_excel_name = config.master_excel_name
         if not master_excel_name.lower().endswith(".xlsx"):
             master_excel_name = f"{master_excel_name}.xlsx"
         excel_path = config.output_root / master_excel_name
 
         if config.write_master_excel:
-            dataframe.to_excel(excel_path, index=False, sheet_name="PerImage")
+            with pd.ExcelWriter(excel_path, engine="openpyxl") as writer:
+                dataframe.to_excel(writer, index=False, sheet_name="PerImage")
+                if not plane_summary_df.empty:
+                    plane_summary_df.to_excel(writer, index=False, sheet_name="PlaneSummary")
             print(
                 "[SUMMARY] Master Excel table saved to "
                 f"'{excel_path}'."
@@ -429,8 +707,8 @@ def main(config_path: Optional[Path] = None) -> None:
             dataframe.to_csv(csv_path, index=False)
             print(f"[SUMMARY] Master CSV table saved to '{csv_path}'.")
 
-        l_count = plane_record_counts.get("L", 0)
-        t_count = plane_record_counts.get("T", 0)
+        l_count = len(plane_results["L"].per_image_records) if "L" in plane_results else 0
+        t_count = len(plane_results["T"].per_image_records) if "T" in plane_results else 0
         print(
             "[SUMMARY] Master table contains "
             f"{len(per_image_records)} row(s) (L: {l_count}, T: {t_count})."
