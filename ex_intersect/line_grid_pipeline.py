@@ -39,6 +39,7 @@ class LineGridConfig:
     scalebar_micrometer: float = 50.0
     crop_rows: Tuple[int, int] = (0, 1825)
     crop_cols: Tuple[int, int] = (0, 2580)
+    build_dir_long_deg: Optional[int] = None
 
     def __post_init__(self) -> None:
         self.file_in_path = Path(self.file_in_path)
@@ -57,7 +58,7 @@ class LineGridConfig:
     def to_input_parameters(self) -> Dict[str, object]:
         """Return a serialisable mapping of configuration values."""
 
-        return {
+        params: Dict[str, object] = {
             "Filename": self.file_in_path.name,
             "borders_white": self.borders_white,
             "row_step": self.row_step,
@@ -71,6 +72,9 @@ class LineGridConfig:
             "crop_rows": self.crop_rows,
             "crop_cols": self.crop_cols,
         }
+        if self.build_dir_long_deg is not None:
+            params["build_dir_long_deg"] = self.build_dir_long_deg
+        return params
 
 
 @dataclass
