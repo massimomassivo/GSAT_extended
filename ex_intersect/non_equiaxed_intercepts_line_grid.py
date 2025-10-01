@@ -483,12 +483,15 @@ def _process_plane(
         overall_stats = statistics.overall_statistics
         timestamp = datetime.now().isoformat(timespec="seconds")
         results_dir = _derive_results_dir(config)
+        adjusted_build_dir_deg = (
+            (build_dir_long_deg + 90) % 180 if plane.label == "T" else build_dir_long_deg
+        )
         records.append(
             PerImageRecord(
                 sample_id="",  # placeholder, filled later
                 plane=plane.label,
                 image_name=image_path.name,
-                build_dir_long_deg=build_dir_long_deg,
+                build_dir_long_deg=adjusted_build_dir_deg,
                 n_intercepts=int(overall_stats.segment_count),
                 lbar_um=float(overall_stats.average_length),
                 s_um=float(overall_stats.std_dev),
