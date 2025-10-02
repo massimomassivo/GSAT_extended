@@ -76,6 +76,20 @@ class NonEquiaxedConfig:
     write_master_excel: bool
     write_master_csv: bool
     build_dir_long_deg: int
+    qa: "QAConfig"
+
+
+@dataclass(slots=True)
+class QAConfig:
+    """Configuration controlling optional QA overlay rendering."""
+
+    enable: bool = False
+    random_seed: Optional[int] = None
+    dir_name: str = "Quality Assurance Schnittlinien"
+    line_width: float = 1.5
+    alpha: float = 0.35
+    color_L: str = "tab:red"
+    color_T: str = "tab:blue"
 
 
 @dataclass(slots=True)
@@ -128,6 +142,7 @@ class PlaneProcessingResult:
     pooled_distances: np.ndarray
     pooled_inverse_distances: np.ndarray
     angle_average_lengths: Dict[float, Tuple[float, ...]]
+    qa_overlays_saved: int
 
 
 def _mean_finite(values: Iterable[float]) -> Optional[float]:
@@ -184,7 +199,7 @@ def _compute_anisotropy_index_for_longitudinal(
     return anisotropy, source_label, None
 
 
-FORCED_THETA_VALUES: Tuple[float, ...] = (
+ROTATION_SET: Tuple[float, ...] = (
     22.5,
     45.0,
     67.5,
@@ -194,6 +209,8 @@ FORCED_THETA_VALUES: Tuple[float, ...] = (
     157.5,
     180.0,
 )
+
+FORCED_THETA_VALUES: Tuple[float, ...] = ROTATION_SET
 
 
 def _load_toml(path: Path) -> MutableMapping[str, object]:
@@ -338,7 +355,7 @@ def load_config(path: Path) -> NonEquiaxedConfig:
     path = Path(path)
     data = _load_toml(path)
 
-    allowed_top_level = {"paths", "pipeline", "save", "save_options", "meta", "orientation"}
+    allowed_top_level = {"paths", "pipeline", "save", "save_options", "meta", "orientation", "qa"}
     _ensure_allowed_keys(data, allowed_top_level, str(path))
 
     if "save" in data and "save_options" in data:
@@ -399,6 +416,92 @@ def load_config(path: Path) -> NonEquiaxedConfig:
             f"{path}::orientation must be one of 0, 90, or 180 degrees; received {raw_build_dir!r}."
         )
     build_dir_long_deg = int(round(build_dir_value))
+
+    qa_section = data.get("qa")
+    qa_config = QAConfig()
+    if qa_section is not None:
+        qa_mapping = _ensure_mapping(qa_section, key="qa", context=str(path))
+        allowed_qa_keys = {
+            "enable",
+            "random_seed",
+            "dir_name",
+            "line_width",
+            "alpha",
+            "color_L",
+            "color_T",
+        }
+        _ensure_allowed_keys(qa_mapping, allowed_qa_keys, f"{path}::qa")
+
+        enable_value = qa_mapping.get("enable", qa_config.enable)
+        if not isinstance(enable_value, bool):
+            raise TypeError(
+                f"Expected 'enable' in {path}::qa to be a boolean, not {type(enable_value).__name__}"
+            )
+
+        random_seed_value = qa_mapping.get("random_seed", qa_config.random_seed)
+        if random_seed_value is not None:
+            if isinstance(random_seed_value, bool) or not isinstance(random_seed_value, (int, float)):
+                raise TypeError(
+                    f"Expected 'random_seed' in {path}::qa to be an integer, not {type(random_seed_value).__name__}"
+                )
+            random_seed_int = int(round(float(random_seed_value)))
+        else:
+            random_seed_int = None
+
+        dir_name_value = qa_mapping.get("dir_name", qa_config.dir_name)
+        if not isinstance(dir_name_value, str):
+            raise TypeError(
+                f"Expected 'dir_name' in {path}::qa to be a string, not {type(dir_name_value).__name__}"
+            )
+        dir_name_stripped = dir_name_value.strip()
+        if not dir_name_stripped:
+            raise ValueError(f"The entry 'dir_name' in {path}::qa must not be empty")
+
+        line_width_value = qa_mapping.get("line_width", qa_config.line_width)
+        if not isinstance(line_width_value, (int, float)) or isinstance(line_width_value, bool):
+            raise TypeError(
+                f"Expected 'line_width' in {path}::qa to be a number, not {type(line_width_value).__name__}"
+            )
+        line_width_float = float(line_width_value)
+
+        alpha_value = qa_mapping.get("alpha", qa_config.alpha)
+        if not isinstance(alpha_value, (int, float)) or isinstance(alpha_value, bool):
+            raise TypeError(
+                f"Expected 'alpha' in {path}::qa to be a number, not {type(alpha_value).__name__}"
+            )
+        alpha_float = float(alpha_value)
+        if not (0.0 <= alpha_float <= 1.0):
+            raise ValueError(
+                f"The entry 'alpha' in {path}::qa must be between 0 and 1; received {alpha_value!r}."
+            )
+
+        color_l_value = qa_mapping.get("color_L", qa_config.color_L)
+        if not isinstance(color_l_value, str):
+            raise TypeError(
+                f"Expected 'color_L' in {path}::qa to be a string, not {type(color_l_value).__name__}"
+            )
+        color_l_stripped = color_l_value.strip()
+        if not color_l_stripped:
+            raise ValueError(f"The entry 'color_L' in {path}::qa must not be empty")
+
+        color_t_value = qa_mapping.get("color_T", qa_config.color_T)
+        if not isinstance(color_t_value, str):
+            raise TypeError(
+                f"Expected 'color_T' in {path}::qa to be a string, not {type(color_t_value).__name__}"
+            )
+        color_t_stripped = color_t_value.strip()
+        if not color_t_stripped:
+            raise ValueError(f"The entry 'color_T' in {path}::qa must not be empty")
+
+        qa_config = QAConfig(
+            enable=enable_value,
+            random_seed=random_seed_int,
+            dir_name=dir_name_stripped,
+            line_width=line_width_float,
+            alpha=alpha_float,
+            color_L=color_l_stripped,
+            color_T=color_t_stripped,
+        )
 
     pipeline_section = data.get("pipeline", {})
     pipeline_mapping = _ensure_mapping(pipeline_section, key="pipeline", context=str(path))
@@ -463,6 +566,7 @@ def load_config(path: Path) -> NonEquiaxedConfig:
         write_master_excel=write_master_excel,
         write_master_csv=write_master_csv,
         build_dir_long_deg=build_dir_long_deg,
+        qa=qa_config,
     )
 
 
@@ -522,6 +626,98 @@ def _derive_results_dir(config: pipeline.LineGridConfig) -> Path:
     return config.results_base_dir / f"{config.file_in_path.stem}{suffix_part}_results"
 
 
+def pick_random_theta_for_image(
+    image_path: Path, base_seed: Optional[int], *, rng: np.random.Generator
+) -> float:
+    """Select a rotation angle for ``image_path`` from :data:`ROTATION_SET`."""
+
+    if base_seed is not None:
+        hash_value = hash(image_path.stem) & 0xFFFFFFFF
+        seeded_rng = np.random.default_rng(base_seed ^ hash_value)
+        return float(seeded_rng.choice(ROTATION_SET))
+    return float(rng.choice(ROTATION_SET))
+
+
+def save_qa_overlay(
+    plane: str,
+    image_path: Path,
+    theta_deg: float,
+    row_step_px: int,
+    crop_rows: Tuple[int, int],
+    crop_cols: Tuple[int, int],
+    out_path: Path,
+    color: str,
+    alpha: float,
+    line_width: float,
+) -> None:
+    """Render and save an overlay visualising the QA line grid for ``image_path``."""
+
+    import matplotlib.pyplot as plt
+    from skimage import io
+
+    img = io.imread(str(image_path))
+    if img.ndim == 3:
+        if img.shape[2] == 1:
+            img = img[..., 0]
+        else:
+            rgb = img[..., :3]
+            weights = np.array([0.299, 0.587, 0.114], dtype=float)
+            img = np.tensordot(rgb, weights, axes=([-1], [0]))
+
+    r0, r1 = (int(c) for c in crop_rows)
+    c0, c1 = (int(c) for c in crop_cols)
+    img = img[r0:r1, c0:c1]
+    if img.ndim == 0:
+        img = np.asarray(img)
+    height, width = img.shape[:2]
+
+    theta = np.deg2rad(theta_deg)
+    direction = np.array([np.cos(theta), np.sin(theta)], dtype=float)
+    normal = np.array([-np.sin(theta), np.cos(theta)], dtype=float)
+
+    centre = np.array([(width - 1) / 2.0, (height - 1) / 2.0], dtype=float)
+    corners = np.array(
+        [[0.0, 0.0], [width - 1.0, 0.0], [0.0, height - 1.0], [width - 1.0, height - 1.0]],
+        dtype=float,
+    )
+    projections = (corners - centre) @ normal
+    c_min = float(np.min(projections))
+    c_max = float(np.max(projections))
+
+    if row_step_px <= 0:
+        row_step_px = 1
+    start_k = int(np.floor(c_min / row_step_px))
+    end_k = int(np.ceil(c_max / row_step_px))
+
+    diagonal = float(np.hypot(width, height))
+    figsize = (max(width, 1) / 100.0, max(height, 1) / 100.0)
+    fig, ax = plt.subplots(figsize=figsize, dpi=100)
+    ax.imshow(img, cmap="gray", interpolation="nearest")
+    ax.set_axis_off()
+
+    for k in range(start_k, end_k + 1):
+        offset = k * row_step_px
+        p0 = centre + offset * normal
+        p1 = p0 - diagonal * direction
+        p2 = p0 + diagonal * direction
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], color=color, alpha=alpha, linewidth=line_width)
+
+    ax.text(
+        8,
+        16,
+        f"{plane}  θ={theta_deg:.1f}°",
+        color=color,
+        fontsize=9,
+        ha="left",
+        va="center",
+        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.6, edgecolor="none"),
+    )
+
+    fig.tight_layout(pad=0)
+    fig.savefig(str(out_path), bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+
+
 def _process_plane(
     plane: PlaneConfig,
     *,
@@ -530,6 +726,8 @@ def _process_plane(
     save_options: pipeline.SaveOptions,
     config_context: str,
     build_dir_long_deg: int,
+    qa_config: QAConfig,
+    qa_rng: np.random.Generator,
 ) -> PlaneProcessingResult:
     ensure_directory(plane.output_dir)
 
@@ -542,6 +740,12 @@ def _process_plane(
     pooled_distances: List[np.ndarray] = []
     pooled_inverse: List[np.ndarray] = []
     angle_length_map: Dict[float, List[float]] = defaultdict(list)
+    qa_dir: Optional[Path] = None
+    qa_saved = 0
+
+    if qa_config.enable:
+        qa_dir = plane.output_dir / qa_config.dir_name
+        ensure_directory(qa_dir)
 
     for index, image_path in enumerate(images, start=1):
         print(f"[INFO] ({plane.label}) Processing {image_path} ({index}/{len(images)})")
@@ -602,10 +806,39 @@ def _process_plane(
                 continue
             angle_length_map.setdefault(angle_value, []).append(float(angle_stat.average_length))
 
+        if qa_config.enable and qa_dir is not None:
+            theta = pick_random_theta_for_image(
+                image_path,
+                qa_config.random_seed,
+                rng=qa_rng,
+            )
+            plane_color = qa_config.color_L if plane.label == "L" else qa_config.color_T
+            output_name = f"{plane.label}_{image_path.stem}_QA_{theta:.1f}deg.png"
+            output_path = qa_dir / output_name
+            save_qa_overlay(
+                plane.label,
+                image_path,
+                theta,
+                int(config.row_step),
+                tuple(int(v) for v in config.crop_rows),
+                tuple(int(v) for v in config.crop_cols),
+                output_path,
+                plane_color,
+                qa_config.alpha,
+                qa_config.line_width,
+            )
+            qa_saved += 1
+            print(
+                f"[QA] plane={plane.label} | img={image_path.name} | theta={theta:.1f}° | saved={output_path}"
+            )
+
     if failures:
         print(f"[SUMMARY] ({plane.label}) Completed with {processed} success(es) and {len(failures)} failure(s).")
     else:
         print(f"[SUMMARY] ({plane.label}) Processed all {processed} image(s) successfully.")
+
+    if qa_config.enable:
+        print(f"[QA] ({plane.label}) Saved {qa_saved} overlay image(s).")
 
     non_empty_distances = [arr for arr in pooled_distances if arr.size]
     non_empty_inverse = [arr for arr in pooled_inverse if arr.size]
@@ -625,6 +858,7 @@ def _process_plane(
         angle_average_lengths={
             angle: tuple(lengths) for angle, lengths in angle_length_map.items()
         },
+        qa_overlays_saved=qa_saved,
     )
 
 
@@ -645,6 +879,7 @@ def main(config_path: Optional[Path] = None) -> None:
     total_found = 0
     per_image_records: List[PerImageRecord] = []
     plane_results: Dict[str, PlaneProcessingResult] = {}
+    qa_rng = np.random.default_rng(config.qa.random_seed)
 
     for plane in (config.longitudinal, config.transverse):
         result = _process_plane(
@@ -654,11 +889,19 @@ def main(config_path: Optional[Path] = None) -> None:
             save_options=config.save_options,
             config_context=str(resolved_path),
             build_dir_long_deg=config.build_dir_long_deg,
+            qa_config=config.qa,
+            qa_rng=qa_rng,
         )
         total_processed += result.processed
         total_found += result.found
         per_image_records.extend(result.per_image_records)
         plane_results[plane.label] = result
+
+    if config.qa.enable:
+        total_qa_saved = sum(result.qa_overlays_saved for result in plane_results.values())
+        print(
+            f"[QA] Saved {total_qa_saved} overlay image(s) for {total_found} input image(s)."
+        )
 
     print(
         "[SUMMARY] Completed non-equiaxed processing: "
