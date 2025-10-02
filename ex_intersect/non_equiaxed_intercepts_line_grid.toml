@@ -3,11 +3,11 @@
 
 [paths]
 # Ordner mit Längsschliff-Bildern (Longitudinal / "L").
-longitudinal_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Längsschliff"
+longitudinal_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Längsschliff_ohne_sklett"
 # Ordner mit Querschliff-Bildern (Transversal / "T").
-transverse_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Querschliff"
+transverse_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Querschliff_ohne_sklett"
 # Wurzelverzeichnis, in dem Unterordner "L" und "T" für die Ergebnisse angelegt werden.
-output_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Ergebnisse"
+output_dir = "I:/aewk.p/03 Mitarbeiter/Studenten_AEWK/Bergt/06_Data/Bilder nach Feature Sortiert/Lamellenbreite/M - 34524 - Probe 08-001/Ergebnisse_ohne_sklett"
 # Optional: Liste zulässiger Dateimuster. Wird der Eintrag weggelassen, greifen die Standardendungen.
 file_globs = ["*.png", "*.jpg", "*.jpeg", "*.tif", "*.tiff", "*.bmp"]
 
@@ -23,9 +23,9 @@ build_dir_long_deg = 0
 # Die folgenden Werte überschreiben die Default-Parameter der Pipeline.
 # Hinweis: Rotationswinkel (22,5°-Schritte bis 180°) werden automatisch durch das
 # Skript gesetzt und können hier nicht angepasst werden.
-row_step = 20
-scalebar_pixel = 464.0
-scalebar_micrometer = 50.0
+row_step = 50
+scalebar_pixel = 183.0
+scalebar_micrometer = 20.0
 crop_rows = [0, 1825]
 crop_cols = [0, 2580]
 borders_white = true
@@ -33,8 +33,8 @@ borders_white = true
 [save]
 # Optionen zum Schreiben von Ausgabedateien; entspricht SaveOptions in line_grid_pipeline.py.
 save_excel = true
-save_boxplot = true
-save_histograms = true
+save_boxplot = false
+save_histograms = false
 save_rotated_images = false
 append_summary = true
 show_plots = false

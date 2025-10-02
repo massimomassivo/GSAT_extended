@@ -145,13 +145,13 @@ class ManualConfiguration:
     """
 
     input_dir: str = (
-        r"C:\_Development\Github\GSAT_native\images\Kachelbilder_native"
+        r"I:\aewk.p\03 Mitarbeiter\Studenten_AEWK\Bergt\06_Data\Bilder nach Feature Sortiert\Lamellenbreite\M - 34524 - Probe 08-001\Längsschliff"
     )
     output_dir: str = (
-        r"C:\_Development\Github\GSAT_native\images\Kachelbilder_binarised"
+        r"I:\aewk.p\03 Mitarbeiter\Studenten_AEWK\Bergt\06_Data\Bilder nach Feature Sortiert\Lamellenbreite\M - 34524 - Probe 08-001\Längsschliff_ohne_sklett"
     )
     invert_grayscale: bool = True
-    apply_skeletonize: bool = True
+    apply_skeletonize: bool = False
     log_level: str = "INFO"
     denoise_method: str = "nl_means"
     h_factor: float = 0.04

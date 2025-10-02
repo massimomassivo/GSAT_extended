@@ -1,17 +1,23 @@
+# -------------------- Standardbibliothek --------------------
+import os
+import os.path
+import glob
+from pathlib import Path
+
+# -------------------- Drittanbieter-Bibliotheken --------------------
 import numpy as np
 import cv2 as cv
 from skimage.util import img_as_ubyte, img_as_uint
 from skimage import io
-import glob
-import os.path
+
 
 
 def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
-    """ 
+    """
     Loads an image file using OpenCV routines. Color images will be
     converted to grayscale, and uint16 images will linearly scaled to
-    uint8. Only uint16 and uint8 image data types are supported. 
-    
+    uint8. Only uint16 and uint8 image data types are supported.
+
     ---- INPUT ARGUMENTS ----
     path_in: String that contains the file path (and name and extension)
         of the image being loaded.
@@ -20,31 +26,31 @@ def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
         of unsigned 8-bit (uint8) or unsigned 16-bit (uint16) are
         nominally supported. 8-bit is the default (and what the rest of
         the codes currently expect).
-    
-    quiet_in: An optional boolean that is by default set to False. Set 
+
+    quiet_in: An optional boolean that is by default set to False. Set
         to True to prevent outputting any messages.
 
-    ---- RETURNED ---- 
-    [img, img_prop]: List of length two. If the image failed to load 
-        correctly, this list will contain just None objects. In more 
+    ---- RETURNED ----
+    [img, img_prop]: List of length two. If the image failed to load
+        correctly, this list will contain just None objects. In more
         detail, these returned items are described below.
 
         img: OpenCV's Mat class that describes the image data via a
-            dense n-dimensional array of numbers. Conventional numpy 
+            dense n-dimensional array of numbers. Conventional numpy
             operations can be safely applied to img.
 
         img_prop: List of length three that describes the image
             properties. More details given below.
 
             img_prop[0]: Total number of pixels in the image.
-            img_prop[1]: A tuple of length two that provides the number 
-                of rows and columns of pixels. 
-            img_prop[2]: A string that confirms the image data type. 
-                Since load_image(...) converts all images to 'uint8', 
+            img_prop[1]: A tuple of length two that provides the number
+                of rows and columns of pixels.
+            img_prop[2]: A string that confirms the image data type.
+                Since load_image(...) converts all images to 'uint8',
                 this will  always be equal to 'uint8'.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
+    ---- SIDE EFFECTS ----
+    Function input arguments are not altered. Nothing is written to the
     hard drive. This function is a read-only function. Strings may be
     printed to standard output.
     """
@@ -57,7 +63,7 @@ def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
     # Makes forward slashes into backward slashes for W10, and also makes the
     # directory string all lowercase
     # file_path = os.path.normcase(file_path)
-    
+
     quiet = quiet_in
     # ---- End Local Copies ----
 
@@ -77,15 +83,15 @@ def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
     # corrupted
     if img is None:
         return [None, None]
-    
+
     # Total number of pixels
     image_size = img.size
-    
+
     # If the image is color, img.shape returns a tuple containing the number
     # of  rows, columns, and channels. If the image is grayscale, this returns
     # a tuple containing the number of rows and columns (no color channels)
     image_shape = img.shape
-    
+
     # Returns the image data type (e.g., uint8)
     image_data_type = img.dtype
 
@@ -93,16 +99,16 @@ def load_image(path_in, img_bitdepth='uint8', quiet_in=False):
     if img_bitdepth == "uint8":
         # Use SciKit-Image to be more robust; is should handle n-d arrays
         img = img_as_ubyte(img)
-        
+
     elif img_bitdepth == "uint16":
         # Use SciKit-Image to be more robust
         img = img_as_uint(img)
-        
+
     else:
         if not quiet:
             print("\nWARNING: Unsupported bit depth detected. Defaulting to 8-bit")
         img = img_as_ubyte(img)
-    
+
     # Update image parameters in case any changes were made
     image_size = img.size
     image_shape = img.shape
@@ -122,12 +128,12 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
     """
     Read a multipage image (e.g. monolithic tiff stack) from file using
     the skimage library.
-    
+
     ---- INPUT ARGUMENTS ----
     path_in [string]: Path to tiff file to load
-    
-    indices_in: An optional tuple of either length 1 or length 2. If 
-        length 1, then it should contain a positive integer 
+
+    indices_in: An optional tuple of either length 1 or length 2. If
+        length 1, then it should contain a positive integer
         corresponding to the number of images to be kept centered about
         the middle image of the image sequence. If length 2, then the
         first and second elements will be used directly to slice the
@@ -136,15 +142,15 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
         invalid indices, you will get an error.
 
     bigtiff [bool]: If False, the OpenCV multi-page TIFF function will
-        be used to import the image. This is fine for standard TIFF 
-        files. However, if the TIFF file is saved with a less 
-        conventional format/header, such as for BigTIFF or ImageJ 
+        be used to import the image. This is fine for standard TIFF
+        files. However, if the TIFF file is saved with a less
+        conventional format/header, such as for BigTIFF or ImageJ
         Hyperstack formats, then this should be set to True in order to
         use a different importer. Note, these alternative TIFF formats
         should be used anytime the TIFF file is larger than 4 GB. When
-        set to True, the tifffile library will be used via a plugin 
+        set to True, the tifffile library will be used via a plugin
         within the Sci-Kit Image library.
-    
+
     img_bitdepth_in [string]: Bit depth for the reader to use. Either
         of unsigned 8-bit (uint8) or unsigned 16-bit (uint16) are nominally
         supported. 8-bit is the default (and what the rest of the codes
@@ -154,42 +160,42 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
         which can be thought of as flipping the image stack along the Z-
         direction. This occurs after any images have been removed from
         'indices_in' above. When False, the original order of the image
-        stack is maintained. If the first image corresponds to the 
+        stack is maintained. If the first image corresponds to the
         bottom of a part, then in general, flipz should be True so as
         to ensure a right-handed coordinate system. Positive X will be
-        along ascending column indices, positive Y will be along 
+        along ascending column indices, positive Y will be along
         ascending row indices, and positive Z will be along DESCENDING
         image indices.
-        
+
     quiet_in [bool]: Set to true to suppress any output dialog
-    
+
     --- RETURNED ---
     [img, img_prop]
 
     img: OpenCV Mats n-d array containing images (can be operated on
-        like a numpy array). Its shape is [num_images, num_rows, 
+        like a numpy array). Its shape is [num_images, num_rows,
         num_cols].
 
     img_prop: List of length three that describes the image
             properties.
         img_prop[0]: Total number of pixels in the image.
-        img_prop[1]: A tuple of length three that provides the number 
-            of rows, columns, and pages of pixels. 
-        img_prop[2]: A string that confirms the image data type. 
-            Since load_image(...) converts all images to 'uint8', 
+        img_prop[1]: A tuple of length three that provides the number
+            of rows, columns, and pages of pixels.
+        img_prop[2]: A string that confirms the image data type.
+            Since load_image(...) converts all images to 'uint8',
             this will  always be equal to 'uint8'.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
+    ---- SIDE EFFECTS ----
+    Function input arguments are not altered. Nothing is written to the
     hard drive. This function is a read-only function. Strings may be
     printed to standard output.
-    
+
     Warning: this loads the full image stack and then slices out the
         desired parts defined in indices_in. There maybe be a way to
         do this better ...
-    
+
     """
-    
+
     # ---- Start Local Copies ----
     # Forcing Python to create a new string variable in memory
     # File path to the image file
@@ -198,7 +204,7 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
     # Makes forward slashes into backward slashes for W10, and also makes the
     # directory string all lowercase
     file_path = os.path.normcase(file_path)
-    
+
     quiet = quiet_in
 
     img_bitdepth = img_bitdepth_in.lower()
@@ -221,7 +227,7 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
         return [None, None]
 
     imgs = np.array(imgs) # Convert to Numpy array if not already
-    
+
     # Contains the number of row, columns, and pages in a 3D image
     num_imgs = imgs.shape[0]
     num_rows = imgs.shape[1]
@@ -230,21 +236,21 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
 
     # Returns the image data type (e.g., uint8)
     image_data_type = imgs[0].dtype
-    
+
     # If uint16, convert to uint8 image data type
     if img_bitdepth == "uint8":
         # Use SciKit-Image to be more robust; is should handle n-d arrays
         imgs = img_as_ubyte(imgs)
-        
+
     elif img_bitdepth == "uint16":
         # Use SciKit-Image to be more robust
         imgs = img_as_uint(imgs)
-        
+
     else:
         if not quiet:
             print("\nWARNING: Unsupported bit depth detected. Defaulting to 8-bit")
         imgs = img_as_ubyte(imgs)
-    
+
     if len(indices_in) == 0:
         # return full image
         indx_bounds = [0, num_imgs]
@@ -288,9 +294,9 @@ def load_multipage_image(path_in, indices_in=[], bigtiff=False,\
 
     else:
         indx_bounds = [0, num_imgs]
-        if not quiet: 
+        if not quiet:
             print("\nWARNING: 'indices_in' is malformed. Returning full image")
-    
+
     imgs = imgs[indx_bounds[0]:indx_bounds[1],:,:]
 
     # Reverse the order of the image stack
@@ -325,11 +331,11 @@ def read_pgm(filename_in, transpose=False, ASCII=True):
     in the standard format, the first number should be the number of
     columns and second number should be the number of rows. Finally, the
     flattened array of pixel values are given -- one per line. Ed has
-    them flattened in row-major order (C convention). The input, 
+    them flattened in row-major order (C convention). The input,
     "filename_in", is a string path to the ASCII image file that will be
      imported. The returned image is a Numpy 2D matrix with data type
      UINT8 (i.e., grayscale 0 - 255). Inputs and outputs are similar in
-     style to the above function, load_image(...). Note, to ready 
+     style to the above function, load_image(...). Note, to ready
     """
 
     # Force a local copy of this string
@@ -346,13 +352,13 @@ def read_pgm(filename_in, transpose=False, ASCII=True):
                 lines.remove(l)
 
         # Makes sure it is ASCII format (P2)
-        assert lines[0].strip() == 'P2' 
+        assert lines[0].strip() == 'P2'
 
         # Converts data to a list of integers
         data = []
         for line in lines[1:]:
             data.extend([int(c) for c in line.split()])
-        
+
         if transpose:
             img1_shape = (data[0], data[1]) # (num of rows, num of cols)
 
@@ -374,26 +380,26 @@ def read_pgm(filename_in, transpose=False, ASCII=True):
 
         img1 = img_as_ubyte(img1)
 
-    else: 
+    else:
         # Import as binary format. This must be in the standard format.
-        
+
         img1 = io.imread(file_name)
         img1 = img_as_ubyte(img1)
 
         img1_shape = img1.shape
-    
+
     return (img1, img1_shape)
 
-def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8', 
+def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
     indices_in=(), flipz=False):
     """
     Loads an image sequence into memory in a single batch operation.
     This is done by repeatedly using load_image(...). Hence, the list
-    of returned images will be grayscale and of type uint8. It is 
-    assumed all of the images are in the same directory. Images are 
+    of returned images will be grayscale and of type uint8. It is
+    assumed all of the images are in the same directory. Images are
     sorted in ascending order (alphabetical).
 
-    ---- INPUT ARGUMENTS ---- 
+    ---- INPUT ARGUMENTS ----
     path_in: String that contains the directory path.
 
     file_name_in: An optional string that is taken to be a substring of
@@ -409,8 +415,8 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
         nominally supported. 8-bit is the default (and what the rest of
         the codes currently expect).
 
-    indices_in: An optional tuple of either length 1 or length 2. If 
-        length 1, then it should contain a positive integer 
+    indices_in: An optional tuple of either length 1 or length 2. If
+        length 1, then it should contain a positive integer
         corresponding to the number of images to be kept centered about
         the middle image of the image sequence. If length 2, then the
         first and second elements will be used directly to slice the
@@ -422,30 +428,30 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
         which can be thought of as flipping the image stack along the Z-
         direction. This occurs after any images have been removed from
         'indices_in' above. When False, the original order of the image
-        stack is maintained. If the first image corresponds to the 
+        stack is maintained. If the first image corresponds to the
         bottom of a part, then in general, flipz should be True so as
         to ensure a right-handed coordinate system. Positive X will be
-        along ascending column indices, positive Y will be along 
+        along ascending column indices, positive Y will be along
         ascending row indices, and positive Z will be along DESCENDING
         image indices.
 
-    ---- RETURNED ---- 
+    ---- RETURNED ----
     [[imgs], [img_names]]: List of length two. If the images failed to
-        load correctly, this list will contain just None objects. See 
+        load correctly, this list will contain just None objects. See
         below for more details.
 
-        [imgs]: A 3D Numpy array that contains OpenCV's Mat class  
-            objects, which are 2D Numpy arrays in of themselves. 
+        [imgs]: A 3D Numpy array that contains OpenCV's Mat class
+            objects, which are 2D Numpy arrays in of themselves.
             Conventional Numpy operations can be safely applied to each
             entry of imgs. Images are converted to grayscale and uint8
             automatically. The shape of imgs will be (num_images,
             num_rows, num_cols).
 
         [img_names]: A list of strings that describe the file paths used
-            to import every image. 
+            to import every image.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
+    ---- SIDE EFFECTS ----
+    Function input arguments are not altered. Nothing is written to the
     hard drive. This function is a read-only function. Strings may be
     printed to standard output.
     """
@@ -459,10 +465,10 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
 
     # Makes forward slashes into backward slashes for W10, and also makes the
     # directory string all lowercase
-    dir_path = os.path.normcase(dir_path) 
-    
+    dir_path = os.path.normcase(dir_path)
+
     # Substring of the filenames to be imported
-    file_name = (file_name_in + '.')[:-1] 
+    file_name = (file_name_in + '.')[:-1]
     file_name = os.path.normcase(file_name)
 
     # If length 1, then total number of images to keep about the center
@@ -488,7 +494,7 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
                     if (cur_name.lower()).endswith(file_ext):
                         img_names.append(cur_name)
 
-    # Otherwise, import all common image file types (case insensitive)  
+    # Otherwise, import all common image file types (case insensitive)
     else:
         files = glob.glob(dir_path + '*') # All files in directory
         if files:
@@ -564,15 +570,15 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
     # Number of images in the finalized list of file paths
     num_imgs = len(img_names)
 
-    # [img_props]: A list containing the image properties for each 
-    # imported image. Each entry in img_props is a list in of 
+    # [img_props]: A list containing the image properties for each
+    # imported image. Each entry in img_props is a list in of
     # itself. More details given below.
-    # 
+    #
     # img_prop[m][0]: Total number of pixels in the m-th image.
-    # img_prop[m][1]: A tuple of length two that provides the  
-    #     number of rows and columns of pixels for the m-th image. 
-    # img_prop[m][2]: A string that confirms the image data type 
-    #     for m-th image. Since load_image(...) converts all 
+    # img_prop[m][1]: A tuple of length two that provides the
+    #     number of rows and columns of pixels for the m-th image.
+    # img_prop[m][2]: A string that confirms the image data type
+    #     for m-th image. Since load_image(...) converts all
     #     images to 'uint8', this will always be equal to 'uint8'.
     img_props = []
     imgs = [] # Will be converted to Numpy array later
@@ -582,7 +588,7 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
         # Now actually call OpenCV routines to import the images
         # Use the defined function from above to import images in gray scale
         # and as uint8. Also, use quiet-mode (no outputs to the terminal)
-        cur_img, cur_img_prop = load_image(cur_name, 
+        cur_img, cur_img_prop = load_image(cur_name,
             img_bitdepth=img_bitdepth_in, quiet_in=True)
 
         if cur_img is None:
@@ -596,7 +602,7 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
         # Write out updates for the user
         if (counter%20) == 0:
             print(f"    Currently imported {counter}/{num_imgs}...")
-        
+
         counter += 1
 
     print(f"\nSuccessfully imported {num_imgs} images!")
@@ -627,17 +633,17 @@ def load_image_seq(path_in, file_name_in='', img_bitdepth_in='uint8',
     return [imgs, img_names]
 
 
-def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(), 
+def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
     transpose=False, ASCII=True):
     """
     Loads an image sequence into memory in a single batch operation.
     This is done by repeatedly using load_image(...). Hence, the list
-    of returned images will be grayscale and of type uint8. It is 
-    assumed all of the images are in the same directory. Images are 
-    sorted in ascending order (alphabetical). This function is 
+    of returned images will be grayscale and of type uint8. It is
+    assumed all of the images are in the same directory. Images are
+    sorted in ascending order (alphabetical). This function is
     specifically for Ed's ASCII PGM image file type.
 
-    ---- INPUT ARGUMENTS ---- 
+    ---- INPUT ARGUMENTS ----
     path_in: String that contains the directory path.
 
     file_name_in: An optional string that is taken to be a substring of
@@ -648,8 +654,8 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
         By default, it is an empty string, in which case, every image
         in the directory will be imported.
 
-    indices_in: An optional tuple of either length 1 or length 2. If 
-        length 1, then it should contain a positive integer 
+    indices_in: An optional tuple of either length 1 or length 2. If
+        length 1, then it should contain a positive integer
         corresponding to the number of images to be kept centered about
         the middle image of the image sequence. If length 2, then the
         first and second elements will be used directly to slice the
@@ -657,11 +663,11 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
         would keep the first 100 images. Fair warning, if you provide
         invalid indices, you will get an error.
 
-    transpose: A boolean that determines how to interpret the shape of 
+    transpose: A boolean that determines how to interpret the shape of
         each image. A standard PGM file format will include a line with
         two integers corresponding to the shape of the image being
         imported. If transpose=False, then the first integer is taken to
-        be the number of columns and the second integer the number of 
+        be the number of columns and the second integer the number of
         rows; this is the standard format. If transpose=True, then the
         first integer is taken to be the number of rows and the second
         integer the number of columns.
@@ -670,23 +676,23 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
         ASCII files or as binary images. Set to True for ASCII files,
         and set to False for binary files.
 
-    ---- RETURNED ---- 
+    ---- RETURNED ----
     [[imgs], [img_names]]: List of length two. If the images failed to
-        load correctly, this list will contain just None objects. See 
+        load correctly, this list will contain just None objects. See
         below for more details.
 
-        [imgs]: A 3D Numpy array that contains OpenCV's Mat class  
-            objects, which are 2D Numpy arrays in of themselves. 
+        [imgs]: A 3D Numpy array that contains OpenCV's Mat class
+            objects, which are 2D Numpy arrays in of themselves.
             Conventional Numpy operations can be safely applied to each
             entry of imgs. Images are converted to grayscale and uint8
             automatically. The shape of imgs will be (num_images,
             num_rows, num_cols).
 
         [img_names]: A list of strings that describe the file paths used
-            to import every image. 
+            to import every image.
 
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. Nothing is written to the 
+    ---- SIDE EFFECTS ----
+    Function input arguments are not altered. Nothing is written to the
     hard drive. This function is a read-only function. Strings may be
     printed to standard output.
     """
@@ -703,7 +709,7 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
     dir_path = os.path.normcase(dir_path)
 
     # Substring of the filenames to be imported
-    file_name = (file_name_in + '.')[:-1] 
+    file_name = (file_name_in + '.')[:-1]
     file_name = os.path.normcase(file_name)
 
     # If length 1, then total number of images to keep about the center
@@ -729,7 +735,7 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
                     if (cur_name.lower()).endswith(file_ext):
                         img_names.append(cur_name)
 
-    # Otherwise, import all common image file types (case insensitive)  
+    # Otherwise, import all common image file types (case insensitive)
     else:
         files = glob.glob(dir_path + '*') # All files in directory
         if files:
@@ -805,15 +811,15 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
     # Number of images in the finalized list of file paths
     num_imgs = len(img_names)
 
-    # [img_props]: A list containing the image properties for each 
-    # imported image. Each entry in img_props is a list in of 
+    # [img_props]: A list containing the image properties for each
+    # imported image. Each entry in img_props is a list in of
     # itself. More details given below.
-    # 
+    #
     # img_prop[m][0]: Total number of pixels in the m-th image.
-    # img_prop[m][1]: A tuple of length two that provides the  
-    #     number of rows and columns of pixels for the m-th image. 
-    # img_prop[m][2]: A string that confirms the image data type 
-    #     for m-th image. Since load_image(...) converts all 
+    # img_prop[m][1]: A tuple of length two that provides the
+    #     number of rows and columns of pixels for the m-th image.
+    # img_prop[m][2]: A string that confirms the image data type
+    #     for m-th image. Since load_image(...) converts all
     #     images to 'uint8', this will always be equal to 'uint8'.
     img_props = []
     imgs = [] # Will be converted to Numpy array later
@@ -824,7 +830,7 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
         # Use the defined function from above to import images in gray scale
         # and as uint8. Also, use quiet-mode (no outputs to the terminal)
 
-        [cur_img, temp1] = read_pgm(cur_name, transpose=transpose, 
+        [cur_img, temp1] = read_pgm(cur_name, transpose=transpose,
             ASCII=ASCII)
         cur_img_prop = [cur_img.size, cur_img.shape, cur_img.dtype]
 
@@ -840,7 +846,7 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
         # Write out updates for the user
         if (counter%20) == 0:
             print(f"    Currently imported {counter}/{num_imgs}...")
-        
+
         counter += 1
 
     print(f"\nSuccessfully imported {num_imgs} images!")
@@ -865,114 +871,69 @@ def load_image_seq_ASCII(path_in, file_name_in='', indices_in=(),
     return [imgs, img_names]
 
 
+from pathlib import Path
+import os
+import cv2 as cv
+
 def save_image(img_in, path_in, compression=False, quiet_in=False):
-    """ 
-    Saves an OpenCV image to the hard drive.
-    
-    ---- INPUT ARGUMENTS ----
-    [img_in]: OpenCV's numpy array for a grayscale image. It is assumed 
-        that the image is already grayscale and of type uint8. The array
-        should thus be 2D, where each value represents the intensity for
-        each corresponding pixel. 
-
-    path_in: String that contains the file path (and name and extension)
-        of the image being saved.
-
-    compression: A boolean that determines if the tiff images should
-        be compressed. If True, LZW compression is done. If False,
-        no compression is performed. This compression flag is only
-        used for saving tif (or tiff) images.
-
-    quiet_in: An optional boolean that is by default set to False. Set 
-        to True to prevent outputting any messages.
-
-    ---- RETURNED ---- 
-    retval: A boolean value. Returns True if img_in was successfully
-        saved using the file path given by path_in. If img_in failed
-        to save, retval will be False.
-
-    ---- SIDE EFFECTS ---- 
-    Function input arguments are not altered. An image file is written
-    to the hard drive. Strings may be printed to standard output.
     """
+    Speichert ein 2D-uint8-Bild. Robuster für Netz-/Unicode-Pfade durch
+    Fallback via imencode()+write_bytes(). Gibt True/False zurück.
+    """
+    img = img_in
+    file_path = os.fspath(path_in)  # str (behält Unicode)
+    p = Path(file_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
 
-    # Make local copies
-    img = img_in # No need for a deep copy. This image won't be altered
+    ext = p.suffix.lower()
+    # Formatgerechte Params wählen
+    params = []
+    if ext in (".tif", ".tiff"):
+        params = [cv.IMWRITE_TIFF_COMPRESSION, 5 if compression else 1]
+    elif ext == ".png":
+        # 0 (keine Kompr.) .. 9 (max). Mittelwert ist oft ok.
+        if compression:
+            params = [cv.IMWRITE_PNG_COMPRESSION, 3]
+    elif ext in (".jpg", ".jpeg"):
+        # Qualität 0..100, standard ~95
+        params = [cv.IMWRITE_JPEG_QUALITY, 95]
 
-    # Forcing Python to create a new string variable in memory
-    # Path to the directory to save the images
-    file_path = (path_in + '.')[:-1]
-
-    # Makes forward slashes into backward slashes for W10, and also makes the
-    # directory string all lowercase
-    # file_path = os.path.normcase(file_path)
-    compress_bool = compression
-    quiet = quiet_in
-
-    # Reduced list (actually tuple) of supported image file extensions
-    file_ext = (".tif", ".tiff", ".png", ".jpg", ".jpeg", ".jp2", ".bmp",
-                ".dib", ".pbm", ".ppm", ".pgm", ".pnm")
-
-    retval = False
-
+    # 1) Direkter Versuch mit imwrite (kann bei Unicode/Netzpfaden False liefern)
     try:
-        if compress_bool:
-            # LZW compression if True
-            retval = cv.imwrite(file_path, img, 
-                params=(cv.IMWRITE_TIFF_COMPRESSION, 5))
+        ok = cv.imwrite(str(p), img, params)
+    except Exception:
+        ok = False
 
-        else:
-            # No compression if False
-            retval = cv.imwrite(file_path, img, 
-                params=(cv.IMWRITE_TIFF_COMPRESSION, 1))
+    # 2) Robuster Fallback über imencode + Python-Write (Unicode/UNC sicher)
+    if not ok:
+        # imencode braucht den Punkt in der Extension; mappe .tif korrekt
+        enc_ext = ".tiff" if ext == ".tif" else ext if ext else ".tiff"
+        try:
+            success, buf = cv.imencode(enc_ext, img, params)
+            if success:
+                p.write_bytes(buf.tobytes())
+                ok = True
+        except Exception:
+            ok = False
 
-    except:
-        if not quiet:
-            print(f"\nERROR: Encountered an error trying to save {file_path}")
+    if not ok and not quiet_in:
+        print(f"\nERROR: Failed to save {file_path}")
 
-        if not (file_path.lower()).endswith(file_ext):
+    return ok
 
-            if not quiet:
-                print(f"Detected invalid file extension. Attempting to "\
-                "save as a '.tif' file...")
-
-            file_path = file_path + ".tif"
-
-            try:
-                if compress_bool:
-                    # LZW compression if True
-                    retval = cv.imwrite(file_path, img, 
-                        params=(cv.IMWRITE_TIFF_COMPRESSION, 5))
-
-                else:
-                    # No compression if False
-                    retval = cv.imwrite(file_path, img, 
-                        params=(cv.IMWRITE_TIFF_COMPRESSION, 1))
-
-            except:
-                if not quiet:
-                    print(f"FAILED to save {file_path}")
-
-    if retval:
-        if not quiet_in:
-            print(f"\nSuccessfully saved {file_path}")
-
-    return retval
-
-
-def save_image_seq(imgs_in, dir_in_path, file_name_in, 
+def save_image_seq(imgs_in, dir_in_path, file_name_in,
     index_start_in=0, compression=False):
-    """ 
+    """
     Saves a list of OpenCV images to the hard drive.
-    
+
     ---- INPUT ARGUMENTS ----
     [imgs_in]: A 3D Numpy array containing images, each represented by
-        a Numpy array, which corresponds to OpenCV's single-channel 
+        a Numpy array, which corresponds to OpenCV's single-channel
         uint8 (grayscale) image data type. The shape of imgs_in should
         be (num_images, num_rows, num_cols).
 
     dir_in_path: String that contains the directory path of the image
-        being saved. The directory path will be normalized and made 
+        being saved. The directory path will be normalized and made
         lowercase, so forward or backward slashes are acceptable.
 
     file_name_in: String containing the name to be used for saving all
@@ -980,7 +941,7 @@ def save_image_seq(imgs_in, dir_in_path, file_name_in,
         appended with a 4-digit number to denote the correct sequence.
         Be sure to include the desired filetype, else by default, the
         images will be saved as '.tif' files. For example, if you had
-        three images to save and chose name_out_substr = "out.tif", 
+        three images to save and chose name_out_substr = "out.tif",
         then the saved images would be 'out_0000.tif', 'out_0001.tif',
         and 'out_0002.tif'.
 
@@ -995,14 +956,14 @@ def save_image_seq(imgs_in, dir_in_path, file_name_in,
         no compression is performed. This compression flag is only
         used for saving tif (or tiff) images.
 
-    ---- RETURNED ---- 
-    Nothing is returned    
+    ---- RETURNED ----
+    Nothing is returned
 
-    ---- SIDE EFFECTS ---- 
+    ---- SIDE EFFECTS ----
     Function input arguments are not altered. Image files are written
     to the hard drive. Strings may be printed to standard output.
     """
-    
+
     # Make local copies
     imgs = imgs_in # No need for a deep copy. This image won't be altered
 
@@ -1063,11 +1024,11 @@ def save_image_seq(imgs_in, dir_in_path, file_name_in,
             return
 
         # Construct the full file path for the current image
-        # (directory_path) + (file_name_substring) + (file_index) + 
+        # (directory_path) + (file_name_substring) + (file_index) +
         # (file_extension)
         cur_file_name = file_path + name_substr + img_str_indx + file_ext
 
-        save_flag = save_image(cur_img, cur_file_name, 
+        save_flag = save_image(cur_img, cur_file_name,
             compression=compress_bool, quiet_in=True)
 
         if not save_flag:
@@ -1087,7 +1048,7 @@ def save_image_seq(imgs_in, dir_in_path, file_name_in,
 
 def save_multipage_image(imgs_in, path_in, bigtiff=0,\
     compression=False, quiet_in=False):
-    """ 
+    """
     Saves a list (or Numpy array) of images to the hard drive.
     The image stack will be saved specifically as a multipage
     TIFF file. To save the image stack as multiple, individual
@@ -1095,13 +1056,13 @@ def save_multipage_image(imgs_in, path_in, bigtiff=0,\
 
     ---- INPUT ARGUMENTS ----
     [imgs_in]: A 3D Numpy array containing images, each represented by
-        a Numpy array, which corresponds to OpenCV's single-channel 
+        a Numpy array, which corresponds to OpenCV's single-channel
         uint8 (grayscale) image data type. The shape of imgs_in should
         be (num_images, num_rows, num_cols).
 
-    path_in: String that contains the file path of the image being 
-        saved. This string should end with either '.tif' or '.tiff'. 
-        Note, the file path will be normalized and made lowercase 
+    path_in: String that contains the file path of the image being
+        saved. This string should end with either '.tif' or '.tiff'.
+        Note, the file path will be normalized and made lowercase
         (on Windows 10), so forward or backward slashes are acceptable.
 
     bigtiff: Integer that is either 0, 1, or 2. Changes the header and
@@ -1110,17 +1071,17 @@ def save_multipage_image(imgs_in, path_in, bigtiff=0,\
         Selecting 1 corresponds to using BigTIFF format, and selecting
         2 corresponds to using the native ImageJ Hyperstack format.
 
-    compressions: Boolean that governs whether the image will be 
+    compressions: Boolean that governs whether the image will be
         compressed via ZLib. True to compress the multi-page TIFF
         image, and False to leave it as uncompressed.
 
-    quiet_in: An optional boolean that is by default set to False. Set 
+    quiet_in: An optional boolean that is by default set to False. Set
         to True to prevent outputting any messages.
 
-    ---- RETURNED ---- 
-    Nothing is returned    
+    ---- RETURNED ----
+    Nothing is returned
 
-    ---- SIDE EFFECTS ---- 
+    ---- SIDE EFFECTS ----
     Function input arguments are not altered. Image files are written
     to the hard drive. Strings may be printed to standard output.
     """
@@ -1179,7 +1140,7 @@ def save_multipage_image(imgs_in, path_in, bigtiff=0,\
         if not quiet:
             print("WARNING: 'compression' is unset. Defaulting to False")
         compression = ''
-    
+
     if bigtiff == 0:
         bigtiff = False
         imagej = False
@@ -1190,7 +1151,7 @@ def save_multipage_image(imgs_in, path_in, bigtiff=0,\
         bigtiff = False
         imagej = True
     else:
-        if not quiet: 
+        if not quiet:
             print(f"\nWARNING: bigtiff entry '{bigtiff}' is invalid!")
             print(f"\nDefaulting to bigtiff=0")
         bigtiff = False
@@ -1199,7 +1160,7 @@ def save_multipage_image(imgs_in, path_in, bigtiff=0,\
     bigtiff_compression_settings = {'bigtiff': bigtiff,\
                                     'imagej': imagej,\
                                     'compressionargs': compression}
-   
+
     io.imsave(file_path, imgs, plugin='tifffile', \
               photometric='minisblack', **bigtiff_compression_settings)
 
